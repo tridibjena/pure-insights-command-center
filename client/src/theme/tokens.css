@@ -33,7 +33,7 @@
   /* Everpure brand orange ramp (--ps-color-brand-400/500/600) */
   --accent:      #ff7023;
   --accent-600:  #d55d1d;
-  --accent-fill: #ff7023;   /* filled pills — paired with near-black text (6.8:1) */
+  --accent-fill: #ff7023;
   --on-accent:   #121213;
   --accent-text: #ff8848;   /* orange text on dark surfaces (7:1) */
   --accent-soft: rgba(255, 112, 35, 0.15);
@@ -112,9 +112,10 @@ h3 { font-size: 14px; font-weight: 450; }
   color: var(--text-2); font-size: 13.5px; transition: background .15s, color .15s;
 }
 .nav a:hover { background: var(--chip); }
-.nav a.active { background: var(--accent-fill); color: var(--on-accent); font-weight: 500; }
+/* Active tab: Everpure brand gradient (--ps-color-gradient-brand) with white text */
+.nav a.active { background: linear-gradient(180deg, var(--accent) 0%, var(--accent-600) 100%); color: #fff; font-weight: 500; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.18); }
 .nav a .count { font-family: var(--font-mono); font-size: 10.5px; padding: 1px 6px; border-radius: 999px; background: rgba(255,255,255,0.12); }
-.nav a.active .count { background: rgba(0,0,0,0.16); }
+.nav a.active .count { background: rgba(255, 255, 255, 0.22); color: #fff; }
 .top-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .chip {
   display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px;
