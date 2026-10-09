@@ -86,7 +86,7 @@ and the tests in [`pipeline/tests/`](pipeline/tests).
 
 ## Screenshots
 
-All screenshots come from the running application with the real dataset (`npm run screenshots`). The UI is
+All 15 screenshots come from the running application with the real dataset (`npm run screenshots`), across all four roles. The UI is
 dark-only, set in Geist, with the **Everpure brand orange** (`#ff7023`, from everpuredata.com's
 `--ps-color-brand-500` token) as the single accent and its darker step `#d55d1d` for chart marks. The layout takes
 inspiration from a two-tone analytics dashboard concept: a top pill navigation, large light-weight titles and
@@ -204,6 +204,30 @@ same request with a 403 and records the denial in the audit log.
 * **Replay controls:** start, pause, reset and speed.
 * **Accounts.**
 * **Audit trail:** sign-ins, the alert acknowledgement and the replay actions from the session above.
+
+### 11 · Platform Engineer: report inventory
+
+![Platform engineer reports](docs/screenshots/11-platform-engineer-reports.png)
+
+Signed in as `sre@pureinsights.local`. The engineer sees all **100 reports**: latest load time, severity band, refresh outcome, views, how many of the 20 snapshots breached 15 s, failed refreshes and live alerts. Every column sorts and the filters combine. Orphaned reports are tinted. The navigation has no **Cost Allocation** or **Administration** tabs, because those need `costs:read` and `users:read`.
+
+### 12 · FinOps Analyst: orphaned reports, read-only
+
+![FinOps orphaned reports](docs/screenshots/12-finops-orphaned-read-only.png)
+
+Signed in as `finops@pureinsights.local`. FinOps sees the same **14 orphaned reports** and **$480.9K unowned spend** as the administrator in screenshot 5, but without the **Assign owner** actions: reassignment needs `owners:reassign`, which only the administrator has. The server enforces this too (`POST /api/orphans/{id}/assign-owner` returns 403 for this role).
+
+### 13 · Report Owner: alerts for their own reports only
+
+![Report owner alerts](docs/screenshots/13-report-owner-alerts.png)
+
+Signed in as `user_7@company.com`. Of the 108 live incidents in screenshot 3, this user receives only the **8 on reports they currently own** (1 critical, 2 high, 5 warning), over REST and over the WebSocket alike. There is no replay panel (`replay:control`) and alerts can't be acknowledged (`alerts:ack`). The scope chip in the top bar shows whose reports these are.
+
+### 14 · Report Owner: drill-down of an owned report
+
+![Report owner drill-down](docs/screenshots/14-report-owner-drilldown.png)
+
+RPT_273, one of user_7's reports. The owner gets the full 20-snapshot latency history, refresh outcomes, owner timeline and that report's alerts. They don't get the **cost per view** tile (`costs:read`) or the **data-quality findings** panel (`dq:read`) that the administrator sees in screenshot 6. The open alerts reflect the replay's current position (snapshot 3, where the load was 25.0 s); the history chart shows all 20 snapshots, ending at 8.5 s.
 
 ---
 

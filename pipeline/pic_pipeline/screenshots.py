@@ -146,6 +146,32 @@ def capture(base: str, only: set[str] | None) -> None:
             settle(page)
             shot(page, "10-administration")
 
+        # ── The same product through other roles' eyes ─────────────────────
+        if want("11"):
+            login(page, base, "sre")
+            page.goto(f"{base}/reports")
+            settle(page)
+            shot(page, "11-platform-engineer-reports", full_page=False)
+
+        if want("12"):
+            login(page, base, "finops")
+            page.goto(f"{base}/orphans")
+            settle(page)
+            shot(page, "12-finops-orphaned-read-only", full_page=False)
+
+        if want("13"):
+            login(page, base, "owner")
+            page.goto(f"{base}/alerts")
+            settle(page, 1200)
+            shot(page, "13-report-owner-alerts", full_page=False)
+
+        if want("14"):
+            login(page, base, "owner")
+            owned = page.request.get(f"{base}/api/reports?pageSize=1&sort=alerts").json()["reports"][0]["report_id"]
+            page.goto(f"{base}/reports/{owned}")
+            settle(page, 1200)
+            shot(page, "14-report-owner-drilldown")
+
         browser.close()
 
 
