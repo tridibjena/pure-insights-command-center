@@ -1,0 +1,589 @@
+openapi: 3.1.0
+info:
+  title: Pure Insights Command Center API
+  version: 1.0.0
+  summary: REST API for the Pure Insights Command Center operational analytics dashboard.
+  description: |
+    Node.js/Express API over PostgreSQL. Browser clients authenticate with an httpOnly
+    session cookie (`pic_session`, JWT HS256) and must send `X-Requested-With: XMLHttpRequest`
+    on every request. Telemetry collectors authenticate with `X-API-Key` (SERVICE role).
+    Every route is guarded by a permission from the RBAC matrix (see `x-permission`).
+    Real-time events are delivered over WebSocket — see `asyncapi.yaml`.
+servers:
+  - url: http://localhost:4000
+    description: Local API (the Vite dev server on :5173 proxies /api and /ws to it)
+security:
+  - sessionCookie: []
+tags:
+  - { name: Auth }
+  - { name: Health }
+  - { name: Dashboard, description: System health KPIs (Task 1) }
+  - { name: Reports, description: Report inventory and drill-down (row-scoped for REPORT_OWNER) }
+  - { name: Orphans, description: Orphaned reports and owner reassignment (Task 1) }
+  - { name: Alerts, description: Alert incidents and lifecycle (Task 2) }
+  - { name: Telemetry, description: Telemetry ingestion and replay (Task 2) }
+  - { name: Costs, description: Snowflake credit attribution and unit cost (Task 3) }
+  - { name: DataQuality, description: Anomaly register }
+  - { name: Admin }
+
+paths:
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Sign in with email and password
+      description: Rate-limited to `LOGIN_RATE_LIMIT` failed attempts per 15 minutes per IP. Sets the `pic_session` cookie.
+      security: []
+      x-permission: public
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email, example: sre@pureinsights.local }
+                password: { type: string, format: password }
+      responses:
+        '200':
+          description: Signed in
+          headers:
+            Set-Cookie:
+              schema: { type: string, example: pic_session=eyJ...; Path=/; HttpOnly; SameSite=Strict }
+          content:
+            application/json:
+              schema: { type: object, properties: { user: { $ref: '#/components/schemas/User' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Clear the session cookie
+      security: []
+      x-permission: public
+      responses:
+        '204': { description: Signed out }
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Current user, role and effective permissions
+      x-permission: authenticated
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: object, properties: { user: { $ref: '#/components/schemas/User' } } }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  /api/health:
+    get:
+      tags: [Health]
+      summary: Liveness probe (database round-trip)
+      security: []
+      x-permission: public
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              example: { status: ok, db: up, dbLatencyMs: 1.4 }
+  /api/health/system:
+    get:
+      tags: [Health]
+      summary: Platform self-health — DB, WebSocket clients, replay, telemetry rate, API latency percentiles
+      x-permission: health:read
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              example:
+                database: { status: up, latencyMs: 1.7, poolTotal: 3, poolIdle: 3 }
+                websocket: { clients: 2, byRole: { PLATFORM_ENGINEER: 1, ADMIN: 1 } }
+                replay: { running: false, position: 300, total: 2000, currentSnapshot: 4, progress: 0.15 }
+                telemetry: { eventsLast5m: 301, eventsTotal: 301, lastEventAt: '2026-10-10T03:38:39Z' }
+                liveAlerts: 109
+                api: { totalRequests: 420, serverErrors: 0, p50Ms: 3.1, p95Ms: 21.4, p99Ms: 60.2, slowestRoutes: [] }
+                process: { uptimeSec: 340, rssMb: 92, node: v25.9.0 }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/dashboard/summary:
+    get:
+      tags: [Dashboard]
+      summary: Headline KPIs for the latest snapshot and all time
+      x-permission: health:read
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              example:
+                thresholds: { latencyAlertSec: 15, latencyHighAboveSec: 30, latencyCriticalAboveSec: 45, latencyInvalidAboveSec: 300 }
+                latest: { snapshotSeq: 20, periodMonth: '2026-08-01', reports: 100, latencyBreaching: 76, latencyCritical: 9, refreshFailing: 25, statusUnknown: 5, p50LatencySec: 26.9, p95LatencySec: 50.2 }
+                allTime: { observations: 2000, latencyBreachRate: 0.745, refreshFailureRate: 0.282, p50LatencySec: 27.8, p95LatencySec: 52.1, maxLatencySec: 55, rowsAtMaxLatency: 6 }
+                orphanedReports: 14
+                liveAlerts: { WARNING: 36, HIGH: 35, CRITICAL: 38 }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/dashboard/latency-distribution:
+    get:
+      tags: [Dashboard]
+      summary: Latency histogram in right-closed 5 s bins, with severity band per bin
+      x-permission: health:read
+      parameters:
+        - { name: scope, in: query, schema: { type: string, enum: [all, latest], default: all } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              example: { scope: all, thresholdSec: 15, bins: [{ fromSec: 10, toSec: 15, count: 177, band: OK }, { fromSec: 15, toSec: 20, count: 187, band: WARNING }] }
+  /api/dashboard/trend:
+    get:
+      tags: [Dashboard]
+      summary: Per-snapshot breach rate, refresh failure rate, latency percentiles and orphan count
+      x-permission: health:read
+      responses:
+        '200': { description: OK, content: { application/json: { example: { snapshots: [{ snapshot_seq: 1, period_month: '2025-01-01', latency_breach_rate: 0.77, refresh_failure_rate: 0.33, failed: 25, timed_out: 8, unknown: 4, orphaned: 11, p50_latency_sec: 28.4, p95_latency_sec: 52.6 }] } } } }
+  /api/dashboard/slowest:
+    get:
+      tags: [Dashboard]
+      summary: Slowest reports in the latest snapshot
+      x-permission: health:read
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 10 } }
+      responses:
+        '200': { description: OK }
+
+  /api/reports:
+    get:
+      tags: [Reports]
+      summary: Report inventory (latest snapshot + 20-snapshot counts + live alerts)
+      description: REPORT_OWNER callers only receive reports whose current owner is their `ownerEmail`.
+      x-permission: reports:read
+      parameters:
+        - { name: search, in: query, schema: { type: string, maxLength: 80 } }
+        - { name: status, in: query, schema: { type: string, enum: [SUCCESS, FAILED, TIMED_OUT, UNKNOWN] } }
+        - { name: band, in: query, schema: { type: string, enum: [OK, WARNING, HIGH, CRITICAL] } }
+        - { name: orphaned, in: query, schema: { type: string, enum: ['true', 'false'] } }
+        - { name: sort, in: query, schema: { type: string, enum: [report_id, latency, views, breaches, failures, alerts], default: latency } }
+        - { name: order, in: query, schema: { type: string, enum: [asc, desc], default: desc } }
+        - { $ref: '#/components/parameters/Page' }
+        - { name: pageSize, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  page: { type: integer }
+                  pageSize: { type: integer }
+                  total: { type: integer }
+                  reports: { type: array, items: { $ref: '#/components/schemas/ReportRow' } }
+  /api/reports/{reportId}:
+    get:
+      tags: [Reports]
+      summary: Report drill-down — 20-snapshot history, owner timeline, alerts, data-quality issues, cost (if costs:read)
+      description: Returns 404 (not 403) to owner-scoped users for reports they do not own, so existence is not leaked.
+      x-permission: reports:read
+      parameters: [{ $ref: '#/components/parameters/ReportId' }]
+      responses:
+        '200': { description: OK }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/orphans:
+    get:
+      tags: [Orphans]
+      summary: Currently orphaned reports with lifetime unowned spend, summary and recent reassignments
+      x-permission: orphans:read
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              example:
+                summary: { reports_ever_orphaned: 94, reports_currently_orphaned: 14, orphaned_report_months: 245, orphaned_credits: 141169.95, orphaned_total_cost_usd: 480862.13, orphaned_now: 14, nan_marker_rows: 128, orphaned_marker_rows: 117 }
+                reports: [{ report_id: RPT_204, report_name: Analytics Dashboard 5, latest_owner_marker: nan, last_known_owner: user_4@company.com, orphaned_months: 6, orphaned_total_cost_usd: 14582.4 }]
+                reassigned: []
+  /api/orphans/owners:
+    get:
+      tags: [Orphans]
+      summary: Known owners (for the reassignment picker)
+      x-permission: owners:reassign
+      responses:
+        '200': { description: OK }
+  /api/orphans/{reportId}/assign-owner:
+    post:
+      tags: [Orphans]
+      summary: Assign an owner to a report (admin override, audited)
+      x-permission: owners:reassign
+      parameters: [{ $ref: '#/components/parameters/ReportId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ownerEmail]
+              properties:
+                ownerEmail: { type: string, format: email }
+                note: { type: string, maxLength: 500 }
+      responses:
+        '200': { description: Updated report (also broadcast as `report.owner_changed`) }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/alerts:
+    get:
+      tags: [Alerts]
+      summary: List alerts (also used for WebSocket resync via `since`)
+      x-permission: alerts:read
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [live, OPEN, ACKNOWLEDGED, RESOLVED, all], default: live } }
+        - { name: severity, in: query, schema: { $ref: '#/components/schemas/Severity' } }
+        - { name: rule, in: query, schema: { $ref: '#/components/schemas/RuleCode' } }
+        - { name: reportId, in: query, schema: { type: string } }
+        - { name: since, in: query, description: Only alerts updated after this instant (resync after reconnect), schema: { type: string, format: date-time } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 200 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alerts: { type: array, items: { $ref: '#/components/schemas/Alert' } }
+                  serverTime: { type: string, format: date-time }
+  /api/alerts/stats:
+    get:
+      tags: [Alerts]
+      summary: Counts by status × severity × rule, plus last-hour lifecycle events
+      x-permission: alerts:read
+      responses:
+        '200': { description: OK }
+  /api/alerts/{alertId}:
+    get:
+      tags: [Alerts]
+      summary: Alert with its full lifecycle (RAISED, REPEATED, ESCALATED, ACKNOWLEDGED, RESOLVED)
+      x-permission: alerts:read
+      parameters: [{ $ref: '#/components/parameters/AlertId' }]
+      responses:
+        '200': { description: OK }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/alerts/{alertId}/acknowledge:
+    post:
+      tags: [Alerts]
+      summary: Acknowledge an OPEN alert
+      x-permission: alerts:ack
+      parameters: [{ $ref: '#/components/parameters/AlertId' }]
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { note: { type: string, maxLength: 500 } } } } }
+      responses:
+        '200': { description: Acknowledged (also broadcast as `alert.acknowledged`) }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /api/alerts/{alertId}/resolve:
+    post:
+      tags: [Alerts]
+      summary: Resolve an alert manually
+      x-permission: alerts:ack
+      parameters: [{ $ref: '#/components/parameters/AlertId' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [resolution], properties: { resolution: { type: string, minLength: 3, maxLength: 500 } } } } }
+      responses:
+        '200': { description: Resolved (also broadcast as `alert.resolved`) }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/telemetry/events:
+    post:
+      tags: [Telemetry]
+      summary: Ingest report telemetry from a collector (SERVICE role)
+      description: |
+        Each event runs through persist → rule evaluation → alert lifecycle → WebSocket broadcast.
+        Alert rules: latency strictly > 15 s (LATENCY_SLO_BREACH), FAILED/TIMED_OUT (REFRESH_FAILURE),
+        UNKNOWN (TELEMETRY_GAP). Invalid latency (≤ 0 or > 300 s) is stored but never alerts.
+      security: [{ apiKey: [] }]
+      x-permission: telemetry:ingest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [events]
+              properties:
+                events: { type: array, minItems: 1, maxItems: 500, items: { $ref: '#/components/schemas/ReportTelemetryEvent' } }
+            example: { events: [{ type: report.telemetry, reportId: RPT_200, avgLoadTimeSec: 52.3, refreshStatus: TIMED_OUT }] }
+      responses:
+        '202':
+          description: Accepted; lists the alert transitions produced
+          content:
+            application/json:
+              example: { accepted: 1, transitions: [{ type: alert.raised, alertId: 41, ruleCode: LATENCY_SLO_BREACH, reportId: RPT_200, severity: CRITICAL }, { type: alert.raised, alertId: 42, ruleCode: REFRESH_FAILURE, reportId: RPT_200, severity: HIGH }] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { description: Missing or invalid X-API-Key, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/telemetry/rum:
+    post:
+      tags: [Telemetry]
+      summary: Real-user monitoring beacon — how long a Command Center page took to load
+      x-permission: authenticated
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [route, loadTimeSec], properties: { route: { type: string, example: /health }, loadTimeSec: { type: number, minimum: 0, example: 1.42 } } } } }
+      responses:
+        '202': { description: Accepted (> 15 s raises RUM_SLOW_LOAD) }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /api/telemetry/recent:
+    get:
+      tags: [Telemetry]
+      summary: Most recent telemetry events
+      x-permission: health:read
+      parameters: [{ name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 30 } }]
+      responses: { '200': { description: OK } }
+  /api/telemetry/replay:
+    get:
+      tags: [Telemetry]
+      summary: Replay status
+      x-permission: health:read
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ReplayStatus' } } } }
+  /api/telemetry/replay/start:
+    post:
+      tags: [Telemetry]
+      summary: Start streaming the CSV snapshots through the live ingest path
+      x-permission: replay:control
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ReplayStatus' } } } } }
+  /api/telemetry/replay/stop:
+    post:
+      tags: [Telemetry]
+      summary: Pause the replay
+      x-permission: replay:control
+      responses: { '200': { description: OK } }
+  /api/telemetry/replay/reset:
+    post:
+      tags: [Telemetry]
+      summary: Rewind to snapshot 1 (optionally clearing alerts and telemetry)
+      x-permission: replay:control
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { clearAlerts: { type: boolean, default: true } } } } }
+      responses: { '200': { description: OK } }
+  /api/telemetry/replay/config:
+    post:
+      tags: [Telemetry]
+      summary: Change replay speed / looping
+      x-permission: replay:control
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { intervalMs: { type: integer, minimum: 1000, maximum: 120000 }, loop: { type: boolean } } } } }
+      responses: { '200': { description: OK } }
+
+  /api/costs/summary:
+    get:
+      tags: [Costs]
+      summary: Portfolio unit cost, reconciliation checks, quarantine, warehouse idle, discrepancy and orphan summaries
+      x-permission: costs:read
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              example:
+                pricing: { currency: USD, credit_price_usd: 3 }
+                portfolio: { reports: 100, total_views: 1503281, snowflake_credits: 1206352.48, snowflake_cost_usd: 3619057.44, aws_cost_usd: 461949.25, snowflake_cost_per_view_usd: 2.434, aws_cost_per_view_usd: 0.3073, fully_loaded_cost_per_view_usd: 2.7401 }
+                reconciliation: [{ check_no: 1, check_name: METHOD_A_EQUALS_SOURCE_VALID_CREDITS, expected: 1206352.48, actual: 1206352.48, difference: 0, status: PASS }]
+  /api/costs/reports:
+    get:
+      tags: [Costs]
+      summary: Per-report lifetime unit cost, ranking, decommission flag and Method A vs B difference
+      x-permission: costs:read
+      parameters:
+        - { name: sort, in: query, schema: { type: string, enum: [total_cost, cost_per_view, snowflake_cost_per_view, credits, views], default: cost_per_view } }
+        - { name: order, in: query, schema: { type: string, enum: [asc, desc], default: desc } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 100 } }
+      responses: { '200': { description: OK } }
+  /api/costs/reports/{reportId}:
+    get:
+      tags: [Costs]
+      summary: Monthly unit cost for one report (Method A) plus Method B allocation
+      x-permission: costs:read
+      parameters: [{ $ref: '#/components/parameters/ReportId' }]
+      responses:
+        '200': { description: OK }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/costs/trend:
+    get:
+      tags: [Costs]
+      summary: Monthly Snowflake and AWS spend and Snowflake cost per view
+      x-permission: costs:read
+      responses: { '200': { description: OK } }
+  /api/costs/chargeback:
+    get:
+      tags: [Costs]
+      summary: Lifetime chargeback by owner (orphaned spend explicit)
+      x-permission: costs:read
+      responses: { '200': { description: OK } }
+  /api/costs/discrepancy:
+    get:
+      tags: [Costs]
+      summary: AWS cost vs active views per report-month, with the 3×IQR cost-per-view fence and flags
+      x-permission: costs:read
+      responses: { '200': { description: OK } }
+
+  /api/data-quality/summary:
+    get:
+      tags: [DataQuality]
+      summary: Row counts, defect counts, credit totals before/after quarantine, latency extremes
+      x-permission: dq:read
+      responses: { '200': { description: OK } }
+  /api/data-quality/rules:
+    get:
+      tags: [DataQuality]
+      summary: Rule catalog with rows/reports affected
+      x-permission: dq:read
+      responses: { '200': { description: OK } }
+  /api/data-quality/issues:
+    get:
+      tags: [DataQuality]
+      summary: Anomaly register rows (raw value, detail, action taken)
+      x-permission: dq:read
+      parameters:
+        - { name: rule, in: query, schema: { type: string } }
+        - { name: reportId, in: query, schema: { type: string } }
+        - { $ref: '#/components/parameters/Page' }
+        - { name: pageSize, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+      responses: { '200': { description: OK } }
+
+  /api/admin/users:
+    get:
+      tags: [Admin]
+      summary: User accounts
+      x-permission: users:read
+      responses: { '200': { description: OK } }
+  /api/admin/rbac:
+    get:
+      tags: [Admin]
+      summary: Role → permission matrix
+      x-permission: users:read
+      responses: { '200': { description: OK } }
+  /api/admin/audit:
+    get:
+      tags: [Admin]
+      summary: Audit log (sign-ins, denials, privileged actions)
+      x-permission: audit:read
+      parameters: [{ name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 100 } }]
+      responses: { '200': { description: OK } }
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: pic_session
+      description: "httpOnly, SameSite=Strict JWT session cookie set by POST /api/auth/login. Browser requests must also send the header X-Requested-With: XMLHttpRequest."
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Shared key for telemetry collectors (SERVICE role)
+  parameters:
+    ReportId: { name: reportId, in: path, required: true, schema: { type: string, example: RPT_265 } }
+    AlertId: { name: alertId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+  responses:
+    BadRequest: { description: Validation failed, content: { application/json: { schema: { $ref: '#/components/schemas/Error' }, example: { error: { code: BAD_REQUEST, message: Request validation failed, details: [{ path: ownerEmail, message: Invalid email address }] } } } } }
+    Unauthenticated: { description: No valid session, content: { application/json: { schema: { $ref: '#/components/schemas/Error' }, example: { error: { code: UNAUTHENTICATED, message: Sign in required } } } } }
+    Forbidden: { description: Missing permission (or missing CSRF header) — denials are audited, content: { application/json: { schema: { $ref: '#/components/schemas/Error' }, example: { error: { code: FORBIDDEN, message: 'Missing permission: costs:read' } } } } }
+    NotFound: { description: Not found (or not in the caller's owner scope), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    Conflict: { description: Invalid state transition, content: { application/json: { schema: { $ref: '#/components/schemas/Error' }, example: { error: { code: INVALID_STATE, message: Only OPEN alerts can be acknowledged } } } } }
+    TooManyRequests: { description: Rate limited, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, example: FORBIDDEN }
+            message: { type: string }
+            details: { type: array, items: { type: object, properties: { path: { type: string }, message: { type: string } } } }
+    Role: { type: string, enum: [ADMIN, PLATFORM_ENGINEER, FINOPS_ANALYST, REPORT_OWNER] }
+    Severity: { type: string, enum: [WARNING, HIGH, CRITICAL] }
+    RuleCode: { type: string, enum: [LATENCY_SLO_BREACH, REFRESH_FAILURE, TELEMETRY_GAP, RUM_SLOW_LOAD] }
+    User:
+      type: object
+      properties:
+        email: { type: string }
+        displayName: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        ownerEmail: { type: [string, 'null'] }
+        ownerScoped: { type: boolean }
+        permissions: { type: array, items: { type: string } }
+    ReportRow:
+      type: object
+      properties:
+        report_id: { type: string }
+        report_name: { type: string }
+        owner_email: { type: [string, 'null'], description: NULL when orphaned }
+        is_orphaned: { type: boolean }
+        refresh_status: { type: string, enum: [SUCCESS, FAILED, TIMED_OUT, UNKNOWN] }
+        avg_load_time_sec: { type: [number, 'null'] }
+        latency_band: { type: string, enum: [OK, WARNING, HIGH, CRITICAL, INVALID] }
+        monthly_active_views: { type: integer }
+        breach_snapshots: { type: integer }
+        failure_snapshots: { type: integer }
+        live_alerts: { type: integer }
+        max_live_severity: { oneOf: [{ $ref: '#/components/schemas/Severity' }, { type: 'null' }] }
+    Alert:
+      type: object
+      properties:
+        alert_id: { type: integer }
+        dedupe_key: { type: string, example: 'LATENCY_SLO_BREACH:RPT_210' }
+        rule_code: { $ref: '#/components/schemas/RuleCode' }
+        report_id: { type: [string, 'null'] }
+        severity: { $ref: '#/components/schemas/Severity' }
+        peak_severity: { $ref: '#/components/schemas/Severity' }
+        status: { type: string, enum: [OPEN, ACKNOWLEDGED, RESOLVED] }
+        title: { type: string }
+        message: { type: string }
+        metric_value: { type: [number, 'null'] }
+        threshold: { type: [number, 'null'] }
+        occurrence_count: { type: integer }
+        first_seen_at: { type: string, format: date-time }
+        last_seen_at: { type: string, format: date-time }
+        acknowledged_by: { type: [string, 'null'] }
+        resolved_by: { type: [string, 'null'] }
+        resolution: { type: [string, 'null'] }
+        updated_at: { type: string, format: date-time }
+    ReportTelemetryEvent:
+      type: object
+      required: [type, reportId]
+      description: At least one of avgLoadTimeSec / refreshStatus is required.
+      properties:
+        type: { const: report.telemetry }
+        reportId: { type: string, pattern: '^[A-Za-z0-9_-]{1,40}$' }
+        avgLoadTimeSec: { type: [number, 'null'] }
+        refreshStatus: { type: [string, 'null'], description: SUCCESS, FAILED, TIMED_OUT or UNKNOWN (unrecognised values are treated as UNKNOWN) }
+        snapshotSeq: { type: integer, minimum: 1 }
+        observedAt: { type: string, format: date-time }
+    ReplayStatus:
+      type: object
+      properties:
+        running: { type: boolean }
+        position: { type: integer }
+        total: { type: integer, example: 2000 }
+        snapshotsTotal: { type: integer, example: 20 }
+        currentSnapshot: { type: [integer, 'null'] }
+        progress: { type: number }
+        intervalMs: { type: integer }
+        loop: { type: boolean }
+        eventsSent: { type: integer }
+        cycles: { type: integer }
+        startedAt: { type: [string, 'null'], format: date-time }
+        lastSnapshotCompleted: { type: [integer, 'null'] }

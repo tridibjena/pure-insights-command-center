@@ -1,0 +1,146 @@
+asyncapi: 3.0.0
+info:
+  title: Pure Insights Command Center — real-time channel
+  version: 1.0.0
+  description: |
+    Server-push WebSocket channel for operational notifications (Task 2).
+    The upgrade request is authenticated with the same httpOnly `pic_session` cookie as the
+    REST API; the Origin header must match an allowed client origin (or the API host).
+    The user needs `alerts:read`. Messages are filtered per connection by permission, and
+    REPORT_OWNER connections only receive messages about reports they currently own.
+    The server ignores inbound messages. It pings every 30 s and terminates sockets that
+    miss a pong. After any (re)connect the client resyncs with
+    `GET /api/alerts?status=all&since=<serverTime of last sync>`.
+servers:
+  local:
+    host: localhost:4000
+    pathname: /ws
+    protocol: ws
+    security:
+      - $ref: '#/components/securitySchemes/sessionCookie'
+channels:
+  live:
+    address: /ws
+    messages:
+      sessionReady: { $ref: '#/components/messages/sessionReady' }
+      alertRaised: { $ref: '#/components/messages/alertRaised' }
+      alertEscalated: { $ref: '#/components/messages/alertEscalated' }
+      alertUpdated: { $ref: '#/components/messages/alertUpdated' }
+      alertAcknowledged: { $ref: '#/components/messages/alertAcknowledged' }
+      alertResolved: { $ref: '#/components/messages/alertResolved' }
+      alertsCleared: { $ref: '#/components/messages/alertsCleared' }
+      reportOwnerChanged: { $ref: '#/components/messages/reportOwnerChanged' }
+      telemetrySnapshot: { $ref: '#/components/messages/telemetrySnapshot' }
+      replayStatus: { $ref: '#/components/messages/replayStatus' }
+      systemHeartbeat: { $ref: '#/components/messages/systemHeartbeat' }
+operations:
+  receiveLive:
+    action: receive
+    channel: { $ref: '#/channels/live' }
+    summary: Messages pushed by the server to an authenticated client
+components:
+  securitySchemes:
+    sessionCookie:
+      type: httpApiKey
+      in: cookie
+      name: pic_session
+  schemas:
+    Envelope:
+      type: object
+      required: [type, id, ts, data]
+      properties:
+        type: { type: string }
+        id: { type: string, format: uuid, description: Unique message id (useful for de-duplicating toasts) }
+        ts: { type: string, format: date-time }
+        data: { type: object }
+    Alert:
+      type: object
+      description: Same shape as the REST Alert schema (openapi.yaml#/components/schemas/Alert)
+      properties:
+        alert_id: { type: integer }
+        dedupe_key: { type: string }
+        rule_code: { type: string, enum: [LATENCY_SLO_BREACH, REFRESH_FAILURE, TELEMETRY_GAP, RUM_SLOW_LOAD] }
+        report_id: { type: [string, 'null'] }
+        severity: { type: string, enum: [WARNING, HIGH, CRITICAL] }
+        peak_severity: { type: string, enum: [WARNING, HIGH, CRITICAL] }
+        status: { type: string, enum: [OPEN, ACKNOWLEDGED, RESOLVED] }
+        title: { type: string }
+        message: { type: string }
+        metric_value: { type: [number, 'null'] }
+        threshold: { type: [number, 'null'] }
+        occurrence_count: { type: integer }
+        updated_at: { type: string, format: date-time }
+  messages:
+    sessionReady:
+      name: session.ready
+      summary: Sent once after a successful upgrade
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/Envelope'
+          - properties:
+              data:
+                type: object
+                properties:
+                  email: { type: string }
+                  role: { type: string }
+                  scopedReports: { type: [array, 'null'], items: { type: string }, description: Report ids the user may see (null = unrestricted) }
+    alertRaised:
+      name: alert.raised
+      summary: A new incident opened (first breach for this rule + report). Shown as a toast.
+      x-permission: alerts:read
+      payload:
+        allOf: [{ $ref: '#/components/schemas/Envelope' }, { properties: { data: { $ref: '#/components/schemas/Alert' } } }]
+      examples:
+        - payload: { type: alert.raised, id: 6f1c..., ts: '2026-10-10T03:38:32Z', data: { alert_id: 13, rule_code: LATENCY_SLO_BREACH, report_id: RPT_210, severity: CRITICAL, status: OPEN, title: 'RPT_210: dashboard load 45.4 s', metric_value: 45.4, threshold: 15, occurrence_count: 1 } }
+    alertEscalated:
+      name: alert.escalated
+      summary: An open incident breached again at a higher severity. Shown as a toast.
+      payload:
+        allOf: [{ $ref: '#/components/schemas/Envelope' }, { properties: { data: { $ref: '#/components/schemas/Alert' } } }]
+    alertUpdated:
+      name: alert.updated
+      summary: Repeat breach at the same or lower severity — the incident's count/metric changed (no toast; de-duplication).
+      payload:
+        allOf: [{ $ref: '#/components/schemas/Envelope' }, { properties: { data: { $ref: '#/components/schemas/Alert' } } }]
+    alertAcknowledged:
+      name: alert.acknowledged
+      summary: A user with alerts:ack acknowledged the incident
+      payload:
+        allOf: [{ $ref: '#/components/schemas/Envelope' }, { properties: { data: { $ref: '#/components/schemas/Alert' } } }]
+    alertResolved:
+      name: alert.resolved
+      summary: Incident closed — automatically when the metric recovers (latency ≤ 15 s, refresh SUCCESS) or manually
+      payload:
+        allOf: [{ $ref: '#/components/schemas/Envelope' }, { properties: { data: { $ref: '#/components/schemas/Alert' } } }]
+    alertsCleared:
+      name: alerts.cleared
+      summary: The replay was reset with clearAlerts=true; clients drop their local alert list
+      payload: { $ref: '#/components/schemas/Envelope' }
+    reportOwnerChanged:
+      name: report.owner_changed
+      summary: An administrator assigned an owner to a report (requires reports:read; owner-scoped to that report)
+      payload: { $ref: '#/components/schemas/Envelope' }
+    telemetrySnapshot:
+      name: telemetry.snapshot
+      summary: The replay finished streaming one CSV snapshot (requires health:read)
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/Envelope'
+          - properties:
+              data:
+                type: object
+                properties:
+                  snapshotSeq: { type: integer }
+                  reports: { type: integer }
+                  latencyBreaches: { type: integer }
+                  refreshFailures: { type: integer }
+                  medianLatencySec: { type: number }
+    replayStatus:
+      name: replay.status
+      summary: Replay progress/state change (requires health:read). Same shape as GET /api/telemetry/replay.
+      payload: { $ref: '#/components/schemas/Envelope' }
+    systemHeartbeat:
+      name: system.heartbeat
+      summary: Sent every 30 s alongside the protocol-level ping
+      payload:
+        allOf: [{ $ref: '#/components/schemas/Envelope' }, { properties: { data: { type: object, properties: { clients: { type: integer } } } } }]
