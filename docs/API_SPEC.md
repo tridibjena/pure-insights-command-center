@@ -135,7 +135,7 @@ return 404.
 | POST | `/api/telemetry/rum` | authenticated | Browser page-load beacon |
 | GET | `/api/telemetry/recent` | `health:read` | Latest telemetry events |
 | GET | `/api/telemetry/replay` | `health:read` | Replay status |
-| POST | `/api/telemetry/replay/start` \| `stop` \| `reset` \| `config` | `replay:control` | Replay control |
+| POST | `/api/telemetry/replay/start` \| `stop` \| `reset` \| `config` | `replay:control` | Replay control (`config` takes `intervalMs`, `loop`, `pauseAfterSnapshot`) |
 | GET | `/api/costs/summary` | `costs:read` | Portfolio unit cost, reconciliation, quarantine, idle, discrepancy |
 | GET | `/api/costs/reports` | `costs:read` | Per-report unit cost, ranking, decommission flag, Method A vs B |
 | GET | `/api/costs/reports/{reportId}` | `costs:read` | Monthly unit cost and Method B allocation |

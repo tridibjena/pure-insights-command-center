@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { CapBar, GradientDefs } from '../components/chartShapes.jsx';
 import { ReplayControls } from '../components/ReplayControls.jsx';
 import { RefreshStatus, SeverityBadge, SeverityIcon } from '../components/Severity.jsx';
 import { ChartOrTable, ChartTooltip, ErrorState, Kpi, Loading, PageHead, Panel, Segmented } from '../components/ui.jsx';
@@ -53,11 +54,8 @@ function LatencyDistribution({ threshold }) {
                   />
                 }
               />
-              <Bar dataKey="count" barSize={22} radius={[4, 4, 0, 0]} isAnimationActive={false}>
-                {bins.map((b) => (
-                  <Cell key={b.fromSec} fill={SEVERITY_COLOR[b.band]} />
-                ))}
-              </Bar>
+              <GradientDefs colors={Object.values(SEVERITY_COLOR)} />
+              <Bar dataKey="count" barSize={26} isAnimationActive={false} shape={(p) => <CapBar {...p} color={SEVERITY_COLOR[p.payload.band]} />} />
               <ReferenceLine x={threshold} stroke={C.text2} strokeWidth={1.5} label={{ value: `${threshold} s alert threshold`, position: 'top', fill: C.text2, fontSize: 11 }} />
             </BarChart>
           </ResponsiveContainer>
@@ -186,10 +184,12 @@ export function Health() {
           }
         />
         <Kpi label="Refresh failures · latest" value={L.refreshFailing} unit="reports" foot={`${fmtPct(A.refreshFailureRate)} of all refreshes failed or timed out`} />
-        <Kpi label="Orphaned reports" value={s.orphanedReports} unit="no owner" flag foot={can('orphans:read') ? <Link to="/orphans">Review and reassign →</Link> : 'Owner missing in latest snapshot'} />
+        <Kpi label="Orphaned reports" value={s.orphanedReports} unit="no owner" flag to={can('orphans:read') ? '/orphans' : undefined} toLabel="Review and reassign orphaned reports" foot={can('orphans:read') ? <Link to="/orphans">Review and reassign →</Link> : 'Owner missing in latest snapshot'} />
         <Kpi label="Median load · latest" value={fmtNum(L.p50LatencySec)} unit="s" foot={`p95 ${fmtSec(L.p95LatencySec)} · ${L.statusUnknown} refreshes with no status`} />
         <Kpi
           label="Live alerts"
+          to="/alerts"
+          toLabel="Open alerts"
           value={counts.total}
           unit="open"
           foot={

@@ -84,9 +84,11 @@ and the tests in [`pipeline/tests/`](pipeline/tests).
 ## Screenshots
 
 All screenshots come from the running application with the real dataset (`npm run screenshots`). The UI is
-minimal and dark-only: hairline rules instead of boxes, one copper accent, and every metric kept on the page.
-Severity is always shown with an icon and a label, never by colour alone. Live alert counts, the WebSocket
-state and the notification toggle sit in the sidebar.
+dark-only. Its layout takes inspiration from a two-tone analytics dashboard concept: a top pill navigation, large
+light-weight titles and numbers, rounded charcoal cards for tables and charts, lighter glass cards for KPIs, pill
+filter groups, gradient bars with a solid cap, and a glow callout. Colours come from the agent-auto-optimizer system,
+with copper as the single accent. Severity is always shown with an icon and a label, never by colour alone. Every
+page header shows the live alert counts and the WebSocket state; the bell in the top bar mutes notifications.
 
 ### 1 · Sign in
 
@@ -114,7 +116,7 @@ The landing page for operators.
 Mid-replay, as the Platform Engineer.
 
 * **Toasts:** WebSocket messages arrive as toasts. An "Escalated · …" toast is an existing incident moving up a severity band, not a new alert. Bursts are capped at 3 toasts plus a "+N more" summary.
-* **One incident per report and rule:** the capture pauses the replay at exactly 300 events (3 snapshots), so these numbers reproduce. At that point there are **108 live incidents** (41 critical, 29 high, 38 warning) and **86 auto-resolved** ones, and **134 repeat breaches** were folded into existing incidents instead of producing new notifications.
+* **One incident per report and rule:** the capture uses the replay's `pauseAfterSnapshot: 3` setting, so the replayer stops itself at exactly 300 events and these numbers reproduce. At that point there are **108 live incidents** (41 critical, 29 high, 38 warning) and **86 auto-resolved** ones, and **134 repeat breaches** were folded into existing incidents instead of producing new notifications.
 
 ### 4 · Alert lifecycle
 
@@ -180,7 +182,7 @@ generated [docs/DATA_QUALITY.md](docs/DATA_QUALITY.md).
 Signed in as the Report Owner `user_7@company.com`:
 
 * **Navigation:** only Alerts and Reports.
-* **Data:** the table holds exactly the **7 reports** user_7 currently owns, and the sidebar shows the scope.
+* **Data:** the table holds exactly the **7 reports** user_7 currently owns, and the top bar shows the scope.
 * **Real-time:** alerts and WebSocket messages are filtered to those reports on the server.
 
 ![Forbidden](docs/screenshots/09b-rbac-forbidden.png)

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { ArrowLeft } from '../components/icons.jsx';
 import { RefreshStatus, refreshSeverity, SeverityBadge } from '../components/Severity.jsx';
 import { ChartOrTable, ChartTooltip, ErrorState, Kpi, Loading, PageHead, Panel, Segmented } from '../components/ui.jsx';
 import { fmtInt, fmtMonth, fmtMonthShort, fmtNum, fmtSec, fmtTime, fmtUsd } from '../format.js';
@@ -29,7 +30,7 @@ export function ReportDetail() {
     <div className="stack">
       <PageHead
         title={`${report.report_name}`}
-        actions={<Link className="btn ghost" to="/reports">← All reports</Link>}
+        actions={<Link className="btn" to="/reports"><ArrowLeft /> All reports</Link>}
       >
         <span className="mono">{report.report_id}</span> · owner{' '}
         {report.owner_email ? <span className="mono">{report.owner_email}</span> : <span className="accent">none (orphaned)</span>}

@@ -25,7 +25,7 @@ USERS = {
 HEADERS = {"X-Requested-With": "XMLHttpRequest"}
 VIEWPORT = {"width": 1440, "height": 900}
 DRILLDOWN_REPORT = "RPT_265"
-REPLAY_STOP_AT = 300  # three snapshots of 100 reports
+REPLAY_PAUSE_AFTER = 3  # snapshots streamed before the live-alerting capture
 
 
 def login(page: Page, base: str, who: str) -> None:
@@ -75,19 +75,16 @@ def capture(base: str, only: set[str] | None) -> None:
         if want("03") or want("04"):
             login(page, base, "sre")
             api_post(page, base, "/api/telemetry/replay/reset", {"clearAlerts": True})
-            api_post(page, base, "/api/telemetry/replay/config", {"intervalMs": 3000})
+            # The replayer pauses itself at the end of snapshot 3, so the captured counts reproduce exactly.
+            replay_config = {"intervalMs": 2000, "pauseAfterSnapshot": REPLAY_PAUSE_AFTER}
+            api_post(page, base, "/api/telemetry/replay/config", replay_config)
             page.goto(f"{base}/alerts")
             settle(page)
             api_post(page, base, "/api/telemetry/replay/start")
             page.wait_for_selector(".toast", timeout=15000)
-            # Pause exactly at the end of snapshot 3 so the captured counts are reproducible.
-            deadline = time.time() + 30
-            while time.time() < deadline:
-                status = page.request.get(f"{base}/api/telemetry/replay").json()
-                if status["position"] >= REPLAY_STOP_AT:
-                    break
-                time.sleep(0.04)
-            api_post(page, base, "/api/telemetry/replay/stop")
+            deadline = time.time() + 60
+            while time.time() < deadline and page.request.get(f"{base}/api/telemetry/replay").json()["running"]:
+                time.sleep(0.1)
             page.wait_for_timeout(600)
             if want("03"):
                 shot(page, "03-live-alerting", full_page=False)

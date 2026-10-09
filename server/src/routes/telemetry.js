@@ -11,6 +11,7 @@ const rumSchema = clientLoadSchema.omit({ type: true });
 const configSchema = z.object({
   intervalMs: z.number().int().min(1000).max(120_000).optional(),
   loop: z.boolean().optional(),
+  pauseAfterSnapshot: z.number().int().min(1).max(1000).nullable().optional(),
 });
 
 export function telemetryRouter({ pool, config, ingest, replayer }) {

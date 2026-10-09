@@ -39,16 +39,16 @@ export function Login() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <div className="brand" style={{ padding: 0 }}>
+        <div className="brand" style={{ padding: '0 4px 10px' }}>
           <BrandMark />
           <div>
             <div className="brand-name">Pure Insights Command Center</div>
             <div className="brand-sub">Platform operational analytics</div>
           </div>
         </div>
-        <form className="stack tight" style={{ gap: 16 }} onSubmit={submit}>
+        <form className="login-panel stack tight" style={{ gap: 16 }} onSubmit={submit}>
           <div>
-            <h1>Sign in</h1>
+            <h1 style={{ fontSize: 34 }}>Sign in</h1>
             <p className="muted" style={{ margin: '6px 0 0', fontSize: 12.5 }}>Local account · session kept in a secure httpOnly cookie.</p>
           </div>
           <label className="field">
@@ -60,12 +60,12 @@ export function Login() {
             <input className="input" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           </label>
           {error && <div className="note" role="alert">{error}</div>}
-          <button className="btn primary" type="submit" disabled={busy} style={{ justifyContent: 'center', padding: '8px 12px' }}>
+          <button className="btn primary" type="submit" disabled={busy} style={{ height: 40 }}>
             {busy ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
-        <div className="stack tight" style={{ gap: 8 }}>
-          <span className="label">Demo accounts · one per role</span>
+        <div className="card stack tight" style={{ gap: 8, padding: '18px 16px' }}>
+          <span className="label" style={{ paddingLeft: 12 }}>Demo accounts · one per role</span>
           <div className="demo-users">
             {DEMO.map((d) => (
               <button key={d.email} type="button" onClick={() => setEmail(d.email)}>
@@ -74,7 +74,7 @@ export function Login() {
               </button>
             ))}
           </div>
-          <span className="dim" style={{ fontSize: 11.5 }}>
+          <span className="dim" style={{ fontSize: 11.5, paddingLeft: 12 }}>
             Password: the <span className="mono">SEED_DEMO_PASSWORD</span> value in <span className="mono">.env</span> (see README).
           </span>
         </div>

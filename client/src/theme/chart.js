@@ -2,28 +2,33 @@
 // agent-auto-optimizer: hairline grid, mono ticks, accent for the subject).
 
 export const C = {
-  text: '#f3f3f3',
-  text2: '#d9dfe7',
-  muted: '#949ba5',
-  dim: '#6f7681',
-  hairline: '#26272b',
-  hairlineLit: '#3d4045',
-  panel: '#0b0d10', // page background (charts sit directly on it)
+  text: '#f5f5f5',
+  text2: '#e2e2e4',
+  muted: '#a1a1a6',
+  dim: '#7c7c82',
+  hairline: '#2c2c2e',
+  hairlineLit: '#3a3a3d',
+  panel: '#1e1e1f', // card surface (marker rings, gaps)
   accent: '#b87333',
   series2: '#5b8fd1',
   neutral: '#4a4f57',
 };
 
-// Status colours — validated on the page background; always paired with icon + label.
+// Status colours — validated on the card surface; always paired with icon + label.
 export const SEVERITY_COLOR = {
   OK: '#7fa88a',
   WARNING: '#e9cf6e',
   HIGH: '#d8843a',
-  CRITICAL: '#b8343a',
-  INVALID: '#6f7681',
+  CRITICAL: '#c63d42',
+  INVALID: '#7c7c82',
 };
 
 const mono = 'Geist Mono, ui-monospace, SFMono-Regular, Menlo, monospace';
+
+/** SVG gradient for bars: solid at the cap, fading toward the baseline. */
+export function barGradientId(color) {
+  return `grad-${color.replace('#', '')}`;
+}
 
 export const axis = {
   stroke: C.hairlineLit,

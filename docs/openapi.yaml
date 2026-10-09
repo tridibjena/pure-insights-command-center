@@ -376,10 +376,10 @@ paths:
   /api/telemetry/replay/config:
     post:
       tags: [Telemetry]
-      summary: Change replay speed / looping
+      summary: Change replay speed, looping, or set an automatic pause after a snapshot
       x-permission: replay:control
       requestBody:
-        content: { application/json: { schema: { type: object, properties: { intervalMs: { type: integer, minimum: 1000, maximum: 120000 }, loop: { type: boolean } } } } }
+        content: { application/json: { schema: { type: object, properties: { intervalMs: { type: integer, minimum: 1000, maximum: 120000 }, loop: { type: boolean }, pauseAfterSnapshot: { type: [integer, 'null'], minimum: 1, maximum: 1000, description: Pause automatically once this snapshot has finished streaming (null clears it) } } } } }
       responses: { '200': { description: OK } }
 
   /api/costs/summary:
@@ -587,3 +587,4 @@ components:
         cycles: { type: integer }
         startedAt: { type: [string, 'null'], format: date-time }
         lastSnapshotCompleted: { type: [integer, 'null'] }
+        pauseAfterSnapshot: { type: [integer, 'null'] }

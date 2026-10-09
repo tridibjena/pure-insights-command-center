@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from 'recharts';
+import { CapBar, GradientDefs } from '../components/chartShapes.jsx';
 import { SeverityBadge } from '../components/Severity.jsx';
 import { ChartOrTable, ChartTooltip, ErrorState, Kpi, Loading, PageHead, Panel, Segmented } from '../components/ui.jsx';
 import { fmtCompact, fmtInt, fmtMonth, fmtMonthShort, fmtNum, fmtPct, fmtUsd, fmtUsdCompact } from '../format.js';
@@ -85,9 +86,14 @@ function UnitCostRanking({ reports }) {
                   { name: 'lifetime views', value: fmtInt(p[0].payload.total_views) },
                 ]} />}
               />
-              <Bar dataKey="fully_loaded_cost_per_view_usd" barSize={14} radius={[0, 4, 4, 0]} isAnimationActive={false} label={{ position: 'right', fill: C.text2, fontSize: 11, formatter: (v) => fmtUsd(v) }}>
-                {top.map((r) => <Cell key={r.report_id} fill={r.is_decommission_candidate ? C.accent : '#8a5a2e'} />)}
-              </Bar>
+              <GradientDefs colors={[C.accent, '#8a5a2e']} horizontal />
+              <Bar
+                dataKey="fully_loaded_cost_per_view_usd"
+                barSize={14}
+                isAnimationActive={false}
+                shape={(p) => <CapBar {...p} horizontal color={p.payload.is_decommission_candidate ? C.accent : '#8a5a2e'} />}
+                label={{ position: 'right', fill: C.text2, fontSize: 11, formatter: (v) => fmtUsd(v) }}
+              />
             </BarChart>
           </ResponsiveContainer>
         }
@@ -175,7 +181,7 @@ export function Costs() {
         each query’s <span className="mono">QUERY_TAG</span>, then divided by monthly active views. Negative credits are
         quarantined, not abs()’d or zeroed. Same SQL as <span className="mono">sql/snowflake/</span>.
       </PageHead>
-      <div className="kpis">
+      <div className="kpis hero-grid">
         <Kpi
           wide
           label="Fully loaded cost per active view"
@@ -184,7 +190,7 @@ export function Costs() {
         />
         <Kpi label="Snowflake spend" value={fmtUsdCompact(p.snowflake_cost_usd)} foot={`${fmtInt(p.snowflake_credits)} credits attributed to reports`} />
         <Kpi label="AWS hosting spend" value={fmtUsdCompact(p.aws_cost_usd)} foot="Portal-side cost, from the monitoring export" />
-        <Kpi label="Unowned spend" value={fmtUsdCompact(s.orphans.orphaned_total_cost_usd)} foot={<Link to="/orphans">{s.orphans.orphaned_report_months} orphaned report-months →</Link>} />
+        <Kpi label="Unowned spend" to="/orphans" toLabel="Open orphaned reports" value={fmtUsdCompact(s.orphans.orphaned_total_cost_usd)} foot={<Link to="/orphans">{s.orphans.orphaned_report_months} orphaned report-months →</Link>} />
         <Kpi label="Quarantined credits" value={neg ? fmtNum(neg.credits, 2) : '0'} flag foot={neg ? `${neg.query_rows} attribution rows on ${neg.reports_affected} reports (negative at source)` : 'None'} />
         <Kpi label="AWS cost/view outliers" value={s.discrepancy.cost_per_view_outlier_rows} foot={`> ${fmtUsd(s.discrepancy.outlier_fence_usd)} fence (Q3 + 3×IQR) · ${s.discrepancy.zero_view_cost_rows} zero-view months`} />
         <Kpi label="Impossible usage" value={s.discrepancy.peak_exceeds_views_rows} foot="Report-months with peak concurrent users > monthly views" />

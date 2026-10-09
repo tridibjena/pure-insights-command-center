@@ -213,12 +213,15 @@ describe('replay drives the same pipeline', () => {
   test('a replay batch produces alerts from the CSV observations', async () => {
     await clearAlerts(ctx.pool);
     await as.admin('POST', '/api/telemetry/replay/reset', { clearAlerts: true });
-    await as.admin('POST', '/api/telemetry/replay/config', { intervalMs: 1000 });
+    await as.admin('POST', '/api/telemetry/replay/config', { intervalMs: 1000, pauseAfterSnapshot: 1 });
     const started = await as.admin('POST', '/api/telemetry/replay/start');
     assert.equal(started.body.running, true);
-    for (let i = 0; i < 40 && ctx.replayer.status().position < 100; i++) await new Promise((r) => setTimeout(r, 100));
-    await as.admin('POST', '/api/telemetry/replay/stop');
-    assert.ok(ctx.replayer.status().position >= 100);
+    for (let i = 0; i < 60 && ctx.replayer.status().running; i++) await new Promise((r) => setTimeout(r, 100));
+    const status = ctx.replayer.status();
+    assert.equal(status.running, false, 'replayer pauses itself');
+    assert.equal(status.position, 100, 'exactly one snapshot streamed');
+    assert.equal(status.currentSnapshot, 1);
+    assert.equal(status.pauseAfterSnapshot, null);
     const { rows } = await ctx.pool.query(
       `SELECT count(*)::int AS n FROM app.alerts WHERE rule_code = 'LATENCY_SLO_BREACH'`,
     );

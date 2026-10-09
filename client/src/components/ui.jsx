@@ -1,4 +1,7 @@
 import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowUpRight, CloseIcon, SortIcon } from './icons.jsx';
+import { StatusCluster } from './StatusCluster.jsx';
 
 export function Panel({ title, sub, actions, children, flush = false, className = '' }) {
   return (
@@ -17,10 +20,15 @@ export function Panel({ title, sub, actions, children, flush = false, className 
   );
 }
 
-export function Kpi({ label, value, unit, foot, flag = false, wide = false, children }) {
+export function Kpi({ label, value, unit, foot, flag = false, wide = false, to, toLabel, children }) {
   return (
     <div className={`kpi ${flag ? 'flag' : ''} ${wide ? 'wide' : ''}`}>
       <span className="label">{label}</span>
+      {to && (
+        <Link to={to} className="icon-btn dark sm kpi-link" aria-label={toLabel ?? `Open ${label}`} title={toLabel ?? `Open ${label}`}>
+          <ArrowUpRight />
+        </Link>
+      )}
       <div className="value">
         {value}
         {unit && <small>{unit}</small>}
@@ -38,7 +46,10 @@ export function PageHead({ title, children, actions }) {
         <h1>{title}</h1>
         {children && <p>{children}</p>}
       </div>
-      {actions && <div className="row" style={{ gap: 16 }}>{actions}</div>}
+      <div className="row" style={{ gap: 8 }}>
+        {actions}
+        <StatusCluster />
+      </div>
     </div>
   );
 }
@@ -79,7 +90,7 @@ export function Modal({ title, onClose, children, footer }) {
       <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
         <div className="modal-head">
           <h2>{title}</h2>
-          <button type="button" className="btn ghost sm" onClick={onClose} aria-label="Close">Close</button>
+          <button type="button" className="icon-btn sm" onClick={onClose} aria-label="Close"><CloseIcon /></button>
         </div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}
@@ -92,9 +103,9 @@ export function SortHeader({ label, field, sort, order, onSort, align }) {
   const active = sort === field;
   return (
     <th className={align === 'right' ? 'r' : undefined} aria-sort={active ? (order === 'asc' ? 'ascending' : 'descending') : 'none'}>
-      <button type="button" onClick={() => onSort(field)}>
+      <button type="button" onClick={() => onSort(field)} style={active ? { color: 'var(--text-2)' } : undefined}>
         {label}
-        {active ? (order === 'asc' ? ' ↑' : ' ↓') : ''}
+        <SortIcon dir={active ? order : null} />
       </button>
     </th>
   );
@@ -103,7 +114,7 @@ export function SortHeader({ label, field, sort, order, onSort, align }) {
 export function Pagination({ page, pageSize, total, onPage }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
   return (
-    <div className="row" style={{ justifyContent: 'space-between', paddingTop: 12 }}>
+    <div className="row" style={{ justifyContent: 'space-between', padding: '14px 10px 0' }}>
       <span className="muted num" style={{ fontSize: 12 }}>
         {total === 0 ? 0 : (page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} of {total}
       </span>

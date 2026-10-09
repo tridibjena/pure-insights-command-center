@@ -23,6 +23,7 @@ export function createTelemetryReplayer({ pool, ingest, hub, config, logger }) {
     eventsSent: 0,
     startedAt: null,
     lastSnapshotCompleted: null,
+    pauseAfterSnapshot: null, // optional: pause automatically once this snapshot has streamed
   };
 
   async function load() {
@@ -91,6 +92,10 @@ export function createTelemetryReplayer({ pool, ingest, hub, config, logger }) {
         { permission: 'health:read' },
       );
     }
+    if (state.pauseAfterSnapshot && state.position >= state.pauseAfterSnapshot * perSnapshot()) {
+      state.running = false;
+      state.pauseAfterSnapshot = null;
+    }
     if (state.position >= state.total) {
       state.cycles += 1;
       if (state.loop) state.position = 0;
@@ -135,9 +140,10 @@ export function createTelemetryReplayer({ pool, ingest, hub, config, logger }) {
       publishStatus();
       return status();
     },
-    configure({ intervalMs, loop }) {
+    configure({ intervalMs, loop, pauseAfterSnapshot }) {
       if (intervalMs != null) state.intervalMs = intervalMs;
       if (loop != null) state.loop = loop;
+      if (pauseAfterSnapshot !== undefined) state.pauseAfterSnapshot = pauseAfterSnapshot;
       publishStatus();
       return status();
     },
