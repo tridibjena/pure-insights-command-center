@@ -1,0 +1,38 @@
+{
+  "name": "@pure-insights/server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pure Insights Command Center — REST + WebSocket API (Node.js/Express)",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "NODE_ENV=production node src/index.js",
+    "seed": "node scripts/seedUsers.js",
+    "test": "node --test --test-concurrency=1 \"test/**/*.test.js\"",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie": "^2.0.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.7",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.23.1",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
+    "ws": "^8.22.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.12.0",
+    "globals": "^17.13.0",
+    "supertest": "^7.3.1",
+    "yaml": "^2.9.1"
+  }
+}
