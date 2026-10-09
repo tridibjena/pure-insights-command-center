@@ -61,11 +61,12 @@ function CostTrend() {
   );
 }
 
-function UnitCostRanking({ reports }) {
+function UnitCostRanking({ reports, className }) {
   const [view, setView] = useState('chart');
   const top = reports.slice(0, 15);
   return (
     <Panel
+      className={className}
       title="Fully loaded cost per active view · top 15 reports"
       sub="(Snowflake credits × price + AWS hosting) ÷ monthly active views, lifetime · ★ = decommission candidate"
       actions={<Segmented label="View" value={view} onChange={setView} options={[{ value: 'chart', label: 'Chart' }, { value: 'table', label: 'Table · all 100' }]} />}
@@ -197,9 +198,8 @@ export function Costs() {
       </div>
 
       <div className="grid grid-12">
-        <div className="span-7"><UnitCostRanking reports={rep.reports} /></div>
-        <div className="span-5 stack" style={{ gap: 40 }}>
-          <Panel title="Reconciliation" sub="sql/snowflake/09 — every check must pass" actions={<SeverityBadge severity={allPass ? 'OK' : 'CRITICAL'} label={allPass ? 'All pass' : 'Failing'} />} flush>
+        <UnitCostRanking className="span-7" reports={rep.reports} />
+          <Panel className="span-5" title="Reconciliation" sub="sql/snowflake/09 — every check must pass" actions={<SeverityBadge severity={allPass ? 'OK' : 'CRITICAL'} label={allPass ? 'All pass' : 'Failing'} />} flush>
             <table>
               <tbody>
                 {s.reconciliation.map((c) => (
@@ -213,6 +213,9 @@ export function Costs() {
               </tbody>
             </table>
           </Panel>
+      </div>
+
+      <div className="grid grid-2">
           <Panel title="Unit cost by Snowflake edition" sub="On-demand list price, AWS US East — the credit price is a contract term, so all three are shown" flush>
             <div className="table-wrap">
             <table>
@@ -241,7 +244,6 @@ export function Costs() {
               </tbody>
             </table>
           </Panel>
-        </div>
       </div>
 
       <div className="grid grid-2">
