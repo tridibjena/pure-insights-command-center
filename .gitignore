@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+*.log
+# Assessment brief is distributed separately and is not part of the codebase
+*.docx.pdf
+# Generated simulation exports (reproducible with `npm run pipeline`)
+data/simulated/
+pipeline/test-results/
