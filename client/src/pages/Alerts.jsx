@@ -116,8 +116,8 @@ export function Alerts() {
         severity escalates it, and recovery resolves it automatically.
         {user.ownerScoped && ' You only receive alerts for reports you own.'}
       </PageHead>
-      <div className="grid grid-12">
-        <div className="span-8 kpis" style={{ gridTemplateColumns: 'repeat(4, minmax(0,1fr))' }}>
+      <div className="grid grid-12" style={{ alignItems: 'start' }}>
+        <div className={`kpis ${can('health:read') ? 'span-8' : 'span-12'}`}>
           <Kpi label="Critical" value={counts.CRITICAL} foot="Load > 45 s or refresh FAILED" />
           <Kpi label="High" value={counts.HIGH} foot="Load 30–45 s or refresh TIMED_OUT" />
           <Kpi label="Warning" value={counts.WARNING} foot="Load 15–30 s or status UNKNOWN" />
@@ -147,13 +147,12 @@ export function Alerts() {
         ) : (
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Severity</th><th>Alert</th><th>Rule</th><th>Report</th><th className="r">Metric</th><th className="r">Seen</th><th>Status</th><th>Updated</th></tr></thead>
+              <thead><tr><th>Severity</th><th>Alert · rule</th><th>Report</th><th className="r">Metric</th><th className="r">Seen</th><th>Status</th><th>Updated</th></tr></thead>
               <tbody>
                 {alerts.map((a) => (
                   <tr key={a.alert_id} className="clickable" onClick={() => setSelected(a.alert_id)}>
                     <td><SeverityBadge severity={a.severity} /></td>
-                    <td>{a.title}</td>
-                    <td className="muted">{RULE_LABEL[a.rule_code]}</td>
+                    <td>{a.title}<span className="sub-text">{RULE_LABEL[a.rule_code]}</span></td>
                     <td>{a.report_id ? <Link to={`/reports/${a.report_id}`} className="mono" onClick={(e) => e.stopPropagation()}>{a.report_id}</Link> : '—'}</td>
                     <td className="num r">{a.metric_value == null ? '—' : fmtSec(a.metric_value)}</td>
                     <td className="num r">{a.occurrence_count}×</td>

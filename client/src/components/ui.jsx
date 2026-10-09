@@ -2,24 +2,24 @@ import { useEffect } from 'react';
 
 export function Panel({ title, sub, actions, children, flush = false, className = '' }) {
   return (
-    <section className={`panel ${className}`}>
+    <section className={`section ${className}`}>
       {(title || actions) && (
-        <div className="panel-head">
+        <div className="section-head">
           <div>
             {title && <h2>{title}</h2>}
             {sub && <div className="sub">{sub}</div>}
           </div>
-          {actions && <div className="row">{actions}</div>}
+          {actions && <div className="row" style={{ gap: 16 }}>{actions}</div>}
         </div>
       )}
-      <div className={`panel-body ${flush ? 'flush' : ''}`}>{children}</div>
+      <div className={`section-body ${flush ? 'flush' : ''}`}>{children}</div>
     </section>
   );
 }
 
-export function Kpi({ label, value, unit, foot, flag = false, children }) {
+export function Kpi({ label, value, unit, foot, flag = false, wide = false, children }) {
   return (
-    <div className={`panel kpi ${flag ? 'flag' : ''}`}>
+    <div className={`kpi ${flag ? 'flag' : ''} ${wide ? 'wide' : ''}`}>
       <span className="label">{label}</span>
       <div className="value">
         {value}
@@ -38,7 +38,7 @@ export function PageHead({ title, children, actions }) {
         <h1>{title}</h1>
         {children && <p>{children}</p>}
       </div>
-      {actions && <div className="row">{actions}</div>}
+      {actions && <div className="row" style={{ gap: 16 }}>{actions}</div>}
     </div>
   );
 }
@@ -79,7 +79,7 @@ export function Modal({ title, onClose, children, footer }) {
       <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
         <div className="modal-head">
           <h2>{title}</h2>
-          <button type="button" className="btn ghost sm" onClick={onClose} aria-label="Close">✕</button>
+          <button type="button" className="btn ghost sm" onClick={onClose} aria-label="Close">Close</button>
         </div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}
@@ -103,7 +103,7 @@ export function SortHeader({ label, field, sort, order, onSort, align }) {
 export function Pagination({ page, pageSize, total, onPage }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
   return (
-    <div className="row" style={{ justifyContent: 'space-between', padding: '12px 18px 4px' }}>
+    <div className="row" style={{ justifyContent: 'space-between', paddingTop: 12 }}>
       <span className="muted num" style={{ fontSize: 12 }}>
         {total === 0 ? 0 : (page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} of {total}
       </span>

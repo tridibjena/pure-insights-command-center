@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from 'recharts';
 import { SeverityBadge } from '../components/Severity.jsx';
 import { ChartOrTable, ChartTooltip, ErrorState, Kpi, Loading, PageHead, Panel, Segmented } from '../components/ui.jsx';
 import { fmtCompact, fmtInt, fmtMonth, fmtMonthShort, fmtNum, fmtPct, fmtUsd, fmtUsdCompact } from '../format.js';
@@ -67,7 +67,7 @@ function UnitCostRanking({ reports }) {
     <Panel
       title="Fully loaded cost per active view · top 15 reports"
       sub="(Snowflake credits × price + AWS hosting) ÷ monthly active views, lifetime · ★ = decommission candidate"
-      actions={<Segmented label="View" value={view} onChange={setView} options={[{ value: 'chart', label: 'Chart' }, { value: 'table', label: 'All 100' }]} />}
+      actions={<Segmented label="View" value={view} onChange={setView} options={[{ value: 'chart', label: 'Chart' }, { value: 'table', label: 'Table · all 100' }]} />}
     >
       <ChartOrTable
         view={view}
@@ -138,7 +138,6 @@ function Discrepancy({ correlation }) {
           <CartesianGrid {...grid} />
           <XAxis {...axis} type="number" dataKey="monthly_active_views" name="views" tickFormatter={fmtCompact} />
           <YAxis {...axis} type="number" dataKey="aws_hosting_cost_usd" name="AWS cost" tickFormatter={(v) => `$${v}`} width={48} />
-          <ZAxis range={[12, 12]} />
           <Tooltip
             cursor={{ stroke: C.hairlineLit }}
             content={<ChartTooltip labelFormatter={(_l, p) => `${p[0].payload.report_id} · ${fmtMonth(p[0].payload.period_month)}`} rows={(p) => {
@@ -150,8 +149,8 @@ function Discrepancy({ correlation }) {
               ];
             }} />}
           />
-          <Scatter data={normal} fill="#6b717a" fillOpacity={0.45} isAnimationActive={false} />
-          <Scatter data={flagged} fill={C.accent} stroke={C.panel} strokeWidth={1} isAnimationActive={false} />
+          <Scatter data={normal} isAnimationActive={false} shape={(d) => <circle cx={d.cx} cy={d.cy} r={2} fill="#6b717a" fillOpacity={0.55} />} />
+          <Scatter data={flagged} isAnimationActive={false} shape={(d) => <circle cx={d.cx} cy={d.cy} r={2.5} fill={C.accent} />} />
         </ScatterChart>
       </ResponsiveContainer>
     </Panel>
@@ -171,32 +170,29 @@ export function Costs() {
 
   return (
     <div className="stack">
-      <PageHead title="Cost Allocation" actions={<span className="pill">{fmtUsd(s.pricing.credit_price_usd)} / credit</span>}>
+      <PageHead title="Cost Allocation" actions={<span className="meta">{fmtUsd(s.pricing.credit_price_usd)} / credit</span>}>
         Snowflake credits attributed to individual reports from (simulated) <span className="mono">ACCOUNT_USAGE</span> logs via
         each query’s <span className="mono">QUERY_TAG</span>, then divided by monthly active views. Negative credits are
         quarantined, not abs()’d or zeroed. Same SQL as <span className="mono">sql/snowflake/</span>.
       </PageHead>
-      <div className="grid grid-12">
-        <div className="panel span-4" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <span className="label">Fully loaded cost per active view</span>
-          <span className="hero">{fmtUsd(p.fully_loaded_cost_per_view_usd)}</span>
-          <span className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
-            {fmtUsd(p.snowflake_cost_per_view_usd)} Snowflake compute + {fmtUsd(p.aws_cost_per_view_usd)} AWS hosting across {fmtInt(p.total_views)} views.
-          </span>
-        </div>
-        <div className="span-8 kpis" style={{ gridTemplateColumns: 'repeat(3, minmax(0,1fr))' }}>
-          <Kpi label="Snowflake spend" value={fmtUsdCompact(p.snowflake_cost_usd)} foot={`${fmtInt(p.snowflake_credits)} credits attributed to reports`} />
-          <Kpi label="AWS hosting spend" value={fmtUsdCompact(p.aws_cost_usd)} foot="Portal-side cost, from the monitoring export" />
-          <Kpi label="Quarantined credits" value={neg ? fmtNum(neg.credits, 2) : '0'} flag foot={neg ? `${neg.query_rows} attribution rows on ${neg.reports_affected} reports (negative at source)` : 'None'} />
-          <Kpi label="Unowned spend" value={fmtUsdCompact(s.orphans.orphaned_total_cost_usd)} foot={<Link to="/orphans">{s.orphans.orphaned_report_months} orphaned report-months →</Link>} />
-          <Kpi label="AWS cost/view outliers" value={s.discrepancy.cost_per_view_outlier_rows} foot={`> ${fmtUsd(s.discrepancy.outlier_fence_usd)} fence (Q3 + 3×IQR) · ${s.discrepancy.zero_view_cost_rows} zero-view months`} />
-          <Kpi label="Impossible usage" value={s.discrepancy.peak_exceeds_views_rows} foot="Report-months with peak concurrent users > monthly views" />
-        </div>
+      <div className="kpis">
+        <Kpi
+          wide
+          label="Fully loaded cost per active view"
+          value={fmtUsd(p.fully_loaded_cost_per_view_usd)}
+          foot={`${fmtUsd(p.snowflake_cost_per_view_usd)} Snowflake compute + ${fmtUsd(p.aws_cost_per_view_usd)} AWS hosting across ${fmtInt(p.total_views)} views`}
+        />
+        <Kpi label="Snowflake spend" value={fmtUsdCompact(p.snowflake_cost_usd)} foot={`${fmtInt(p.snowflake_credits)} credits attributed to reports`} />
+        <Kpi label="AWS hosting spend" value={fmtUsdCompact(p.aws_cost_usd)} foot="Portal-side cost, from the monitoring export" />
+        <Kpi label="Unowned spend" value={fmtUsdCompact(s.orphans.orphaned_total_cost_usd)} foot={<Link to="/orphans">{s.orphans.orphaned_report_months} orphaned report-months →</Link>} />
+        <Kpi label="Quarantined credits" value={neg ? fmtNum(neg.credits, 2) : '0'} flag foot={neg ? `${neg.query_rows} attribution rows on ${neg.reports_affected} reports (negative at source)` : 'None'} />
+        <Kpi label="AWS cost/view outliers" value={s.discrepancy.cost_per_view_outlier_rows} foot={`> ${fmtUsd(s.discrepancy.outlier_fence_usd)} fence (Q3 + 3×IQR) · ${s.discrepancy.zero_view_cost_rows} zero-view months`} />
+        <Kpi label="Impossible usage" value={s.discrepancy.peak_exceeds_views_rows} foot="Report-months with peak concurrent users > monthly views" />
       </div>
 
       <div className="grid grid-12">
         <div className="span-7"><UnitCostRanking reports={rep.reports} /></div>
-        <div className="span-5 stack">
+        <div className="span-5 stack" style={{ gap: 40 }}>
           <Panel title="Reconciliation" sub="sql/snowflake/09 — every check must pass" actions={<SeverityBadge severity={allPass ? 'OK' : 'CRITICAL'} label={allPass ? 'All pass' : 'Failing'} />} flush>
             <table>
               <tbody>

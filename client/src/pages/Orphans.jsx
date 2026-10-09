@@ -97,7 +97,7 @@ export function Orphans() {
             <tbody>
               {data.reports.map((r) => (
                 <tr key={r.report_id} className="flagged">
-                  <td><Link to={`/reports/${r.report_id}`} className="mono">{r.report_id}</Link> <span className="muted">{r.report_name}</span></td>
+                  <td><Link to={`/reports/${r.report_id}`} className="mono">{r.report_id}</Link><span className="sub-text">{r.report_name}</span></td>
                   <td className="mono" style={{ fontSize: 12 }}>{r.latest_owner_marker}</td>
                   <td className="mono" style={{ fontSize: 12 }}>{r.last_known_owner ?? '—'}</td>
                   <td className="num r">{r.orphaned_months} / 20</td>

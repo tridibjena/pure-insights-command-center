@@ -5,8 +5,8 @@ import { homePathFor } from '../auth/navigation.js';
 export function Forbidden({ permission }) {
   const { user } = useAuth();
   return (
-    <div className="panel" style={{ maxWidth: 560, margin: '40px auto' }}>
-      <div className="panel-body stack">
+    <div style={{ maxWidth: 560, margin: '64px 0' }}>
+      <div className="stack tight" style={{ gap: 14 }}>
         <span className="label">403 · Access denied</span>
         <h1>This page needs a permission your role doesn’t have</h1>
         <p className="muted" style={{ margin: 0, lineHeight: 1.6 }}>
@@ -24,8 +24,8 @@ export function Forbidden({ permission }) {
 
 export function NotFound() {
   return (
-    <div className="panel" style={{ maxWidth: 560, margin: '40px auto' }}>
-      <div className="panel-body stack">
+    <div style={{ maxWidth: 560, margin: '64px 0' }}>
+      <div className="stack tight" style={{ gap: 14 }}>
         <span className="label">404</span>
         <h1>Nothing here</h1>
         <Link className="btn" to="/">Go home</Link>

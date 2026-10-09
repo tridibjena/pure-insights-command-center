@@ -83,8 +83,10 @@ and the tests in [`pipeline/tests/`](pipeline/tests).
 
 ## Screenshots
 
-All screenshots come from the running application with the real dataset (`npm run screenshots`). The theme is
-dark-only. Severity is always shown with an icon and a label, never by colour alone.
+All screenshots come from the running application with the real dataset (`npm run screenshots`). The UI is
+minimal and dark-only: hairline rules instead of boxes, one copper accent, and every metric kept on the page.
+Severity is always shown with an icon and a label, never by colour alone. Live alert counts, the WebSocket
+state and the notification toggle sit in the sidebar.
 
 ### 1 · Sign in
 
@@ -92,7 +94,7 @@ dark-only. Severity is always shown with an icon and a label, never by colour al
 
 Local accounts stored in PostgreSQL with bcrypt hashes. A successful sign-in sets an httpOnly,
 `SameSite=Strict` session cookie; the token never reaches JavaScript. The same cookie authenticates the
-WebSocket. The demo panel lists one account per role. Failed sign-ins are rate-limited and audited.
+WebSocket. The list below the form has one demo account per role. Failed sign-ins are rate-limited and audited.
 
 ### 2 · System Health (Task 1)
 
@@ -111,18 +113,18 @@ The landing page for operators.
 
 Mid-replay, as the Platform Engineer.
 
-* **Toasts:** WebSocket messages arrive as toasts. "Escalated · RPT_200" shows an existing incident moving up a severity band, not a new alert. Bursts are capped at 3 toasts plus a "+N more" summary.
-* **One incident per report and rule:** after three snapshots there are **109 live incidents** and 53 auto-resolved ones, and **81 repeat breaches** were folded into existing incidents instead of producing new notifications.
+* **Toasts:** WebSocket messages arrive as toasts. An "Escalated · …" toast is an existing incident moving up a severity band, not a new alert. Bursts are capped at 3 toasts plus a "+N more" summary.
+* **One incident per report and rule:** the capture pauses the replay at exactly 300 events (3 snapshots), so these numbers reproduce. At that point there are **108 live incidents** (41 critical, 29 high, 38 warning) and **86 auto-resolved** ones, and **134 repeat breaches** were folded into existing incidents instead of producing new notifications.
 
 ### 4 · Alert lifecycle
 
 ![Alert detail](docs/screenshots/04-alert-detail.png)
 
-One incident's full history:
+One incident's full history, for RPT_299:
 
-1. **RAISED** at CRITICAL (45.4 s).
-2. **REPEATED** at WARNING (18.7 s).
-3. **ESCALATED** back to CRITICAL (47.2 s).
+1. **RAISED** at HIGH (37.4 s).
+2. **REPEATED** at WARNING (21.8 s).
+3. **ESCALATED** to CRITICAL at **55.0 s**, the dataset's most extreme load. The value is alerted on as-is, never capped.
 4. **ACKNOWLEDGED** by the engineer.
 
 Every transition, with its actor, is stored in `app.alert_events`. When latency returns to ≤ 15 s (or a refresh
@@ -178,7 +180,7 @@ generated [docs/DATA_QUALITY.md](docs/DATA_QUALITY.md).
 Signed in as the Report Owner `user_7@company.com`:
 
 * **Navigation:** only Alerts and Reports.
-* **Data:** the table holds exactly the **7 reports** user_7 currently owns, and the top bar shows the scope.
+* **Data:** the table holds exactly the **7 reports** user_7 currently owns, and the sidebar shows the scope.
 * **Real-time:** alerts and WebSocket messages are filtered to those reports on the server.
 
 ![Forbidden](docs/screenshots/09b-rbac-forbidden.png)

@@ -77,7 +77,7 @@ See [COST_ALLOCATION_METHODOLOGY.md](COST_ALLOCATION_METHODOLOGY.md). The SQL su
 * `AlertStreamProvider` owns the socket, the alert reducer (`alertsReducer.js`, pure and tested), toasts, replay state and an event bus that pages subscribe to (`useStreamEvent`).
 * `useApi` keeps the previous data while refetching (rendered at reduced opacity) to avoid layout flashes.
 * `rum.js` measures how long each page takes to become usable and posts it to `/api/telemetry/rum`, so the Command Center monitors its own dashboard load latency.
-* **Theme:** dark only, with design tokens in `theme/tokens.css`. Colour elements (text scale, hairlines, copper accent, mono micro-labels, pills, callouts, flagged rows) are borrowed from the agent-auto-optimizer design system. The severity palette (sage, amber, copper, deep red) was validated for colour-vision-deficiency separation and ≥ 3:1 contrast on the panel surface. Severity always comes with an icon and a text label, and every chart has a table view.
+* **Theme:** minimal and dark-only, with design tokens in `theme/tokens.css`: one plane, hairline rules instead of boxed cards, stat strips instead of tiles, inline icon + text status. Colour elements (text scale, hairlines, copper accent, mono micro-labels) are borrowed from the agent-auto-optimizer design system. The severity palette (sage, amber, copper, deep red) was validated for colour-vision-deficiency separation and ≥ 3:1 contrast. Severity always comes with an icon and a text label, and every chart has a table view.
 
 ## Testing
 

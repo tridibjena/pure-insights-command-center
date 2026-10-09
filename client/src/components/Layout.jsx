@@ -24,9 +24,9 @@ const ROLE_LABEL = {
 export function BrandMark() {
   return (
     <span className="brand-mark" aria-hidden="true">
-      <svg width="16" height="16" viewBox="0 0 16 16">
-        <circle cx="8" cy="8" r="6" fill="none" stroke="#b87333" strokeWidth="1.8" />
-        <path d="M8 4.2V8l2.8 1.7" fill="none" stroke="#f3f3f3" strokeWidth="1.8" strokeLinecap="round" />
+      <svg width="18" height="18" viewBox="0 0 16 16">
+        <circle cx="8" cy="8" r="6.2" fill="none" stroke="#b87333" strokeWidth="1.6" />
+        <path d="M8 4.4V8l2.6 1.6" fill="none" stroke="#f3f3f3" strokeWidth="1.6" strokeLinecap="round" />
       </svg>
     </span>
   );
@@ -54,7 +54,7 @@ export function Layout() {
         <nav className="nav" aria-label="Primary">
           {sections.map((section) => (
             <div key={section}>
-              <div className="nav-section label bare">{section}</div>
+              <div className="nav-section label">{section}</div>
               {items
                 .filter((i) => i.section === section)
                 .map((i) => (
@@ -66,45 +66,46 @@ export function Layout() {
             </div>
           ))}
         </nav>
-        <div className="sidebar-foot">
-          <div style={{ fontSize: 13, color: 'var(--text)' }}>{user.displayName}</div>
-          <div className="muted" style={{ fontSize: 12, margin: '2px 0 10px' }}>{user.email}</div>
-          <div className="row" style={{ justifyContent: 'space-between' }}>
-            <span className="pill">{ROLE_LABEL[user.role]}</span>
-            <button
-              type="button"
-              className="btn ghost sm"
-              onClick={async () => {
-                await logout();
-                navigate('/login');
-              }}
-            >
-              Sign out
-            </button>
+
+        <div className="side-block" aria-live="polite">
+          <span className="label">Live alerts</span>
+          <div className="row" style={{ gap: 12 }}>
+            {['CRITICAL', 'HIGH', 'WARNING'].map((s) => (
+              <span key={s} className="row num" style={{ gap: 5 }} title={`${counts[s]} live ${s.toLowerCase()} alerts`}>
+                <SeverityIcon severity={s} size={10} />
+                {counts[s]}
+              </span>
+            ))}
           </div>
+          <span className="conn">
+            <span className="dot" style={{ background: conn.color }} />
+            WebSocket · {conn.label}
+          </span>
+          <button type="button" className="linklike" onClick={() => setMuted(!muted)} aria-pressed={muted}>
+            {muted ? 'Notifications muted — unmute' : 'Mute notifications'}
+          </button>
+        </div>
+
+        <div className="side-block">
+          <div>
+            <div style={{ color: 'var(--text)' }}>{user.displayName}</div>
+            <div className="dim">{user.email}</div>
+            <div className="muted" style={{ marginTop: 4 }}>{ROLE_LABEL[user.role]}</div>
+            {user.ownerScoped && <div className="accent" style={{ marginTop: 4 }}>Scoped to {user.ownerEmail}</div>}
+          </div>
+          <button
+            type="button"
+            className="linklike"
+            onClick={async () => {
+              await logout();
+              navigate('/login');
+            }}
+          >
+            Sign out
+          </button>
         </div>
       </aside>
       <div className="main">
-        <header className="topbar">
-          <div className="row" style={{ gap: 14 }}>
-            {['CRITICAL', 'HIGH', 'WARNING'].map((s) => (
-              <span key={s} className="row num" style={{ gap: 6, fontSize: 12.5 }} title={`${counts[s]} live ${s.toLowerCase()} alerts`}>
-                <SeverityIcon severity={s} />
-                {counts[s]} <span className="muted">{s.toLowerCase()}</span>
-              </span>
-            ))}
-            {user.ownerScoped && <span className="pill warn">Scoped to {user.ownerEmail}</span>}
-          </div>
-          <div className="row" style={{ gap: 14 }}>
-            <button type="button" className="btn ghost sm" onClick={() => setMuted(!muted)} aria-pressed={muted}>
-              {muted ? 'Notifications muted' : 'Notifications on'}
-            </button>
-            <span className="conn" aria-live="polite">
-              <span className="dot" style={{ background: conn.color }} />
-              WebSocket · {conn.label}
-            </span>
-          </div>
-        </header>
         <main className="content">
           <Outlet />
         </main>

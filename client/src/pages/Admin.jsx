@@ -53,13 +53,16 @@ export function Admin() {
           <Panel title="Accounts" flush>
             <div className="table-wrap">
             <table>
-              <thead><tr><th>User</th><th>Role</th><th>Last sign-in</th></tr></thead>
+              <thead><tr><th>User · role</th><th className="r">Last sign-in</th></tr></thead>
               <tbody>
                 {users.users.map((u) => (
                   <tr key={u.user_id}>
-                    <td><div>{u.display_name}</div><div className="mono muted" style={{ fontSize: 11.5 }}>{u.email}</div></td>
-                    <td className="mono" style={{ fontSize: 10.5 }}>{u.role.replace('_', ' ')}</td>
-                    <td className="num muted" style={{ fontSize: 12 }}>{fmtAgo(u.last_login_at)}</td>
+                    <td>
+                      <div style={{ color: 'var(--text)' }}>{u.display_name}</div>
+                      <span className="sub-text mono">{u.email}</span>
+                      <span className="sub-text">{u.role.replaceAll('_', ' ').toLowerCase()}</span>
+                    </td>
+                    <td className="num muted r" style={{ fontSize: 12 }}>{fmtAgo(u.last_login_at)}</td>
                   </tr>
                 ))}
               </tbody>

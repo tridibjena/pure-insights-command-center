@@ -71,7 +71,7 @@ export function Reports() {
               <tbody>
                 {data.reports.map((r) => (
                   <tr key={r.report_id} className={`clickable ${r.is_orphaned ? 'flagged' : ''}`} onClick={() => navigate(`/reports/${r.report_id}`)}>
-                    <td><span className="mono">{r.report_id}</span> <span className="muted">{r.report_name}</span></td>
+                    <td><span className="mono">{r.report_id}</span><span className="sub-text">{r.report_name}</span></td>
                     <td className={r.owner_email ? '' : 'accent'}>{r.owner_email ?? 'Orphaned'}{r.has_owner_override && <span className="pill" style={{ marginLeft: 6 }}>reassigned</span>}</td>
                     <td className="num r">{fmtSec(r.avg_load_time_sec)}</td>
                     <td><SeverityBadge severity={r.latency_band} /></td>

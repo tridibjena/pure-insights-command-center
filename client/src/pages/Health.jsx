@@ -19,10 +19,10 @@ function LatencyDistribution({ threshold }) {
   return (
     <Panel
       title="Load-latency distribution"
-      sub={`Report-months per 5 s bin · alert threshold > ${threshold} s · values never capped`}
+      sub={`Report-months per 5 s bin · threshold > ${threshold} s · never capped`}
       actions={
         <>
-          <Segmented label="Scope" value={scope} onChange={setScope} options={[{ value: 'all', label: 'All 20 snapshots' }, { value: 'latest', label: 'Latest' }]} />
+          <Segmented label="Scope" value={scope} onChange={setScope} options={[{ value: 'all', label: 'All snapshots' }, { value: 'latest', label: 'Latest' }]} />
           <Segmented label="View" value={view} onChange={setView} options={[{ value: 'chart', label: 'Chart' }, { value: 'table', label: 'Table' }]} />
         </>
       }
@@ -140,9 +140,9 @@ function PlatformHealth() {
         <div><span className="label">Last event</span><div className="v num">{fmtAgo(data.telemetry.lastEventAt)}</div></div>
         <div><span className="label">Uptime</span><div className="v num">{Math.floor(data.process.uptimeSec / 60)} min</div></div>
       </div>
-      <div style={{ borderTop: '1px solid var(--hairline)', margin: '16px 0 14px' }} />
-      <span className="label" style={{ marginBottom: 10 }}>Telemetry replay (CSV snapshots streamed as live events)</span>
-      <div style={{ marginTop: 10 }}><ReplayControls compact /></div>
+      <div style={{ borderTop: '1px solid var(--rule)', margin: '20px 0 14px' }} />
+      <span className="label">Telemetry replay · CSV snapshots streamed as live events</span>
+      <div style={{ marginTop: 12 }}><ReplayControls /></div>
       {lastSnap && (
         <div className="note" style={{ marginTop: 14 }}>
           Snapshot <strong>{lastSnap.snapshotSeq}</strong> streamed: <strong>{lastSnap.latencyBreaches}</strong> of {lastSnap.reports} reports
@@ -166,38 +166,40 @@ export function Health() {
 
   return (
     <div className="stack">
-      <PageHead title="System Health" actions={<span className="pill">Snapshot {L.snapshotSeq} · {fmtMonth(L.periodMonth)}</span>}>
+      <PageHead title="System Health" actions={<span className="meta">Snapshot {L.snapshotSeq} · {fmtMonth(L.periodMonth)}</span>}>
         Report load latency, refresh reliability and ownership across the portal. Alerts fire when a dashboard load
         exceeds {s.thresholds.latencyAlertSec} s or an automated refresh fails.
       </PageHead>
 
-      <div className="grid grid-12">
-        <div className="panel span-5" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <span className="label">Reports breaching the {s.thresholds.latencyAlertSec} s load SLO · latest snapshot</span>
-          <div className="row" style={{ alignItems: 'baseline', gap: 10 }}>
-            <span className="hero">{L.latencyBreaching}</span>
-            <span className="muted" style={{ fontSize: 15 }}>of {L.reports} reports</span>
-          </div>
-          <div className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
-            {fmtPct(A.latencyBreachRate)} of all {fmtInt(A.observations)} report-months exceed {s.thresholds.latencyAlertSec} s.
-            Median load {fmtSec(A.p50LatencySec)}, p95 {fmtSec(A.p95LatencySec)}, worst {fmtSec(A.maxLatencySec)} ({A.rowsAtMaxLatency} report-months at the ceiling).
-          </div>
-          <div className="row" style={{ gap: 8 }}>
-            <SeverityBadge severity="CRITICAL" label={`${L.latencyCritical} critical > 45 s`} />
-          </div>
-        </div>
-        <div className="span-7 kpis" style={{ gridTemplateColumns: 'repeat(2, minmax(0,1fr))' }}>
-          <Kpi label="Refresh failures · latest" value={L.refreshFailing} unit="reports" foot={`${fmtPct(A.refreshFailureRate)} of all refreshes failed or timed out`} />
-          <Kpi label="Orphaned reports" value={s.orphanedReports} unit="no owner" foot={can('orphans:read') ? <Link to="/orphans">Review and reassign →</Link> : 'Owner missing in latest snapshot'} flag />
-          <Kpi label="Median load · latest" value={fmtNum(L.p50LatencySec)} unit="s" foot={`p95 ${fmtSec(L.p95LatencySec)} · ${L.statusUnknown} refreshes with no status reported`} />
-          <Kpi label="Live alerts" value={counts.total} unit="open" foot={
+      <div className="kpis">
+        <Kpi
+          wide
+          label={`Reports breaching the ${s.thresholds.latencyAlertSec} s load SLO · latest snapshot`}
+          value={L.latencyBreaching}
+          unit={`of ${L.reports} reports`}
+          foot={
+            <>
+              {fmtPct(A.latencyBreachRate)} of all {fmtInt(A.observations)} report-months exceed {s.thresholds.latencyAlertSec} s ·
+              median {fmtSec(A.p50LatencySec)} · p95 {fmtSec(A.p95LatencySec)} · worst {fmtSec(A.maxLatencySec)} ({A.rowsAtMaxLatency} at the ceiling)
+              <div style={{ marginTop: 6 }}><SeverityBadge severity="CRITICAL" label={`${L.latencyCritical} critical > 45 s in the latest snapshot`} /></div>
+            </>
+          }
+        />
+        <Kpi label="Refresh failures · latest" value={L.refreshFailing} unit="reports" foot={`${fmtPct(A.refreshFailureRate)} of all refreshes failed or timed out`} />
+        <Kpi label="Orphaned reports" value={s.orphanedReports} unit="no owner" flag foot={can('orphans:read') ? <Link to="/orphans">Review and reassign →</Link> : 'Owner missing in latest snapshot'} />
+        <Kpi label="Median load · latest" value={fmtNum(L.p50LatencySec)} unit="s" foot={`p95 ${fmtSec(L.p95LatencySec)} · ${L.statusUnknown} refreshes with no status`} />
+        <Kpi
+          label="Live alerts"
+          value={counts.total}
+          unit="open"
+          foot={
             <span className="row" style={{ gap: 12 }}>
               {['CRITICAL', 'HIGH', 'WARNING'].map((k) => (
-                <span key={k} className="row num" style={{ gap: 5 }}><SeverityIcon severity={k} />{counts[k]}</span>
+                <span key={k} className="row num" style={{ gap: 5 }}><SeverityIcon severity={k} size={10} />{counts[k]}</span>
               ))}
             </span>
-          } />
-        </div>
+          }
+        />
       </div>
 
       <div className="grid grid-2">
@@ -214,7 +216,7 @@ export function Health() {
                 <tbody>
                   {(slow?.reports ?? []).map((r) => (
                     <tr key={r.report_id} className={r.is_orphaned ? 'flagged' : ''}>
-                      <td><Link to={`/reports/${r.report_id}`} className="mono">{r.report_id}</Link> <span className="muted">{r.report_name}</span></td>
+                      <td><Link to={`/reports/${r.report_id}`} className="mono">{r.report_id}</Link><span className="sub-text">{r.report_name}</span></td>
                       <td className={r.owner_email ? '' : 'accent'}>{r.owner_email ?? 'Orphaned'}</td>
                       <td className="num r">{fmtSec(r.avg_load_time_sec)}</td>
                       <td><SeverityBadge severity={r.latency_band} /></td>

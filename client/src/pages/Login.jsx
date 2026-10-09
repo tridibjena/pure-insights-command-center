@@ -38,7 +38,7 @@ export function Login() {
 
   return (
     <div className="login-page">
-      <div className="login-card stack">
+      <div className="login-card">
         <div className="brand" style={{ padding: 0 }}>
           <BrandMark />
           <div>
@@ -46,43 +46,37 @@ export function Login() {
             <div className="brand-sub">Platform operational analytics</div>
           </div>
         </div>
-        <form className="panel" onSubmit={submit}>
-          <div className="panel-body stack" style={{ padding: 22 }}>
-            <div>
-              <h1 style={{ fontSize: 18 }}>Sign in</h1>
-              <p className="muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
-                Local account · session kept in a secure httpOnly cookie.
-              </p>
-            </div>
-            <label className="field">
-              <span className="label">Email</span>
-              <input className="input" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
-            </label>
-            <label className="field">
-              <span className="label">Password</span>
-              <input className="input" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-            </label>
-            {error && <div className="note" role="alert" style={{ borderColor: 'var(--sev-critical)' }}>{error}</div>}
-            <button className="btn primary" type="submit" disabled={busy} style={{ justifyContent: 'center' }}>
-              {busy ? 'Signing in…' : 'Sign in'}
-            </button>
+        <form className="stack tight" style={{ gap: 16 }} onSubmit={submit}>
+          <div>
+            <h1>Sign in</h1>
+            <p className="muted" style={{ margin: '6px 0 0', fontSize: 12.5 }}>Local account · session kept in a secure httpOnly cookie.</p>
           </div>
+          <label className="field">
+            <span className="label">Email</span>
+            <input className="input" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          </label>
+          <label className="field">
+            <span className="label">Password</span>
+            <input className="input" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          </label>
+          {error && <div className="note" role="alert">{error}</div>}
+          <button className="btn primary" type="submit" disabled={busy} style={{ justifyContent: 'center', padding: '8px 12px' }}>
+            {busy ? 'Signing in…' : 'Sign in'}
+          </button>
         </form>
-        <div className="panel">
-          <div className="panel-body stack" style={{ gap: 10 }}>
-            <span className="label">Demo accounts (one per role)</span>
-            <div className="demo-users">
-              {DEMO.map((d) => (
-                <button key={d.email} type="button" onClick={() => setEmail(d.email)}>
-                  <span className="mono">{d.email}</span>
-                  <span className="muted">{d.role}</span>
-                </button>
-              ))}
-            </div>
-            <span className="muted" style={{ fontSize: 12 }}>
-              Password: the <span className="mono">SEED_DEMO_PASSWORD</span> value in <span className="mono">.env</span> (see README).
-            </span>
+        <div className="stack tight" style={{ gap: 8 }}>
+          <span className="label">Demo accounts · one per role</span>
+          <div className="demo-users">
+            {DEMO.map((d) => (
+              <button key={d.email} type="button" onClick={() => setEmail(d.email)}>
+                <span className="mono">{d.email}</span>
+                <span className="dim">{d.role}</span>
+              </button>
+            ))}
           </div>
+          <span className="dim" style={{ fontSize: 11.5 }}>
+            Password: the <span className="mono">SEED_DEMO_PASSWORD</span> value in <span className="mono">.env</span> (see README).
+          </span>
         </div>
       </div>
     </div>

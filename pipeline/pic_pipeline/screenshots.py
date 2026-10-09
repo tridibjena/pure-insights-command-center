@@ -25,6 +25,7 @@ USERS = {
 HEADERS = {"X-Requested-With": "XMLHttpRequest"}
 VIEWPORT = {"width": 1440, "height": 900}
 DRILLDOWN_REPORT = "RPT_265"
+REPLAY_STOP_AT = 300  # three snapshots of 100 reports
 
 
 def login(page: Page, base: str, who: str) -> None:
@@ -79,9 +80,15 @@ def capture(base: str, only: set[str] | None) -> None:
             settle(page)
             api_post(page, base, "/api/telemetry/replay/start")
             page.wait_for_selector(".toast", timeout=15000)
-            page.wait_for_timeout(7000)  # ~2 snapshots: raises, escalations and auto-resolves
+            # Pause exactly at the end of snapshot 3 so the captured counts are reproducible.
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                status = page.request.get(f"{base}/api/telemetry/replay").json()
+                if status["position"] >= REPLAY_STOP_AT:
+                    break
+                time.sleep(0.04)
             api_post(page, base, "/api/telemetry/replay/stop")
-            page.wait_for_timeout(400)
+            page.wait_for_timeout(600)
             if want("03"):
                 shot(page, "03-live-alerting", full_page=False)
             if want("04"):

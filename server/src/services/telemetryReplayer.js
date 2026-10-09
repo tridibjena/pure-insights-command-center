@@ -43,7 +43,8 @@ export function createTelemetryReplayer({ pool, ingest, hub, config, logger }) {
     const snapshotSize = perSnapshot();
     return {
       ...state,
-      currentSnapshot: state.total ? Math.min(Math.floor(state.position / snapshotSize) + 1, state.snapshotsTotal) : null,
+      // Snapshot being (or last) streamed: 300 events = snapshot 3 complete, 310 = snapshot 4 in progress.
+      currentSnapshot: state.total && state.position > 0 ? Math.min(Math.ceil(state.position / snapshotSize), state.snapshotsTotal) : null,
       progress: state.total ? state.position / state.total : 0,
     };
   }

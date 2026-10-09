@@ -8,13 +8,13 @@ export const C = {
   dim: '#6f7681',
   hairline: '#26272b',
   hairlineLit: '#3d4045',
-  panel: '#121418',
+  panel: '#0b0d10', // page background (charts sit directly on it)
   accent: '#b87333',
   series2: '#5b8fd1',
   neutral: '#4a4f57',
 };
 
-// Status colours — validated on the panel surface; always paired with icon + label.
+// Status colours — validated on the page background; always paired with icon + label.
 export const SEVERITY_COLOR = {
   OK: '#7fa88a',
   WARNING: '#e9cf6e',
