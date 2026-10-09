@@ -210,6 +210,20 @@ describe('real-time alerting over WebSocket', () => {
 });
 
 describe('replay drives the same pipeline', () => {
+  test('reset is serialized with ingestion (no deadlock, no half-applied batch)', async () => {
+    const events = Array.from({ length: 50 }, (_, i) => ({ type: 'report.telemetry', reportId: `RPT_${200 + i}`, avgLoadTimeSec: 40 }));
+    for (let round = 0; round < 3; round++) {
+      const [ingested, reset] = await Promise.all([
+        postTelemetry(ctx, events),
+        as.admin('POST', '/api/telemetry/replay/reset', { clearAlerts: true }),
+      ]);
+      assert.equal(ingested.status, 202);
+      assert.equal(reset.status, 200);
+      const { rows } = await ctx.pool.query('SELECT count(*)::int AS n FROM app.alerts');
+      assert.ok([0, 50].includes(rows[0].n), `alerts must be all-or-nothing, got ${rows[0].n}`);
+    }
+  });
+
   test('a replay batch produces alerts from the CSV observations', async () => {
     await clearAlerts(ctx.pool);
     await as.admin('POST', '/api/telemetry/replay/reset', { clearAlerts: true });

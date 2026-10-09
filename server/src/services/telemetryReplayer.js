@@ -9,9 +9,11 @@ function median(values) {
   return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
 }
 
-export function createTelemetryReplayer({ pool, ingest, hub, config, logger }) {
+export function createTelemetryReplayer({ pool, ingest, exclusive = (fn) => fn(), hub, config, logger }) {
   let observations = null;
   let timer = null;
+  // Bumped by reset(): a batch already in flight when the replay is reset must not move the cursor.
+  let generation = 0;
   const state = {
     running: false,
     position: 0,
@@ -55,6 +57,7 @@ export function createTelemetryReplayer({ pool, ingest, hub, config, logger }) {
   async function tick() {
     timer = null;
     if (!state.running) return;
+    const gen = generation;
     const rows = await load();
     const batchSize = Math.ceil(perSnapshot() / BATCHES_PER_SNAPSHOT);
     const batch = rows.slice(state.position, state.position + batchSize);
@@ -73,6 +76,7 @@ export function createTelemetryReplayer({ pool, ingest, hub, config, logger }) {
       publishStatus();
       return;
     }
+    if (gen !== generation) return; // replay was reset while this batch was in flight
     state.position += batch.length;
     state.eventsSent += batch.length;
 
@@ -132,9 +136,11 @@ export function createTelemetryReplayer({ pool, ingest, hub, config, logger }) {
     },
     async reset({ clearAlerts = true } = {}) {
       this.stop();
-      Object.assign(state, { position: 0, cycles: 0, eventsSent: 0, startedAt: null, lastSnapshotCompleted: null });
+      generation += 1;
+      Object.assign(state, { position: 0, cycles: 0, eventsSent: 0, startedAt: null, lastSnapshotCompleted: null, pauseAfterSnapshot: null });
       if (clearAlerts) {
-        await pool.query('TRUNCATE app.alert_events, app.alerts, app.telemetry_events RESTART IDENTITY');
+        // Serialized with telemetry ingestion, so TRUNCATE never races an ingest transaction (deadlock).
+        await exclusive(() => pool.query('TRUNCATE app.alert_events, app.alerts, app.telemetry_events RESTART IDENTITY'));
         hub?.broadcast('alerts.cleared', { reason: 'replay reset' }, { permission: 'alerts:read' });
       }
       publishStatus();

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { homePathFor } from '../auth/navigation.js';
-import { BrandMark } from '../components/Layout.jsx';
 
 const DEMO = [
   { email: 'admin@pureinsights.local', role: 'Administrator' },
@@ -40,7 +39,6 @@ export function Login() {
     <div className="login-page">
       <div className="login-card">
         <div className="brand" style={{ padding: '0 4px 10px' }}>
-          <BrandMark />
           <div>
             <div className="brand-name">Pure Insights Command Center</div>
             <div className="brand-sub">Platform operational analytics</div>

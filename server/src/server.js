@@ -13,8 +13,8 @@ export function createServer(config) {
   const pool = createPool(config.db);
   const server = http.createServer();
   const hub = createWsHub({ server, pool, config, logger });
-  const { ingest } = createTelemetryIngest({ pool, hub, thresholds: config.thresholds, logger });
-  const replayer = createTelemetryReplayer({ pool, ingest, hub, config, logger });
+  const { ingest, exclusive } = createTelemetryIngest({ pool, hub, thresholds: config.thresholds, logger });
+  const replayer = createTelemetryReplayer({ pool, ingest, exclusive, hub, config, logger });
   const metrics = createApiMetrics();
   const app = createApp({ pool, config, hub, ingest, replayer, metrics, logger });
   server.on('request', app);

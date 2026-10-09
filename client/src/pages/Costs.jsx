@@ -86,12 +86,12 @@ function UnitCostRanking({ reports }) {
                   { name: 'lifetime views', value: fmtInt(p[0].payload.total_views) },
                 ]} />}
               />
-              <GradientDefs colors={[C.accent, '#8a5a2e']} horizontal />
+              <GradientDefs colors={[C.accent, C.accentMuted]} horizontal />
               <Bar
                 dataKey="fully_loaded_cost_per_view_usd"
                 barSize={14}
                 isAnimationActive={false}
-                shape={(p) => <CapBar {...p} horizontal color={p.payload.is_decommission_candidate ? C.accent : '#8a5a2e'} />}
+                shape={(p) => <CapBar {...p} horizontal color={p.payload.is_decommission_candidate ? C.accent : C.accentMuted} />}
                 label={{ position: 'right', fill: C.text2, fontSize: 11, formatter: (v) => fmtUsd(v) }}
               />
             </BarChart>

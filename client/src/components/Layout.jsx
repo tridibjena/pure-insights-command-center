@@ -14,17 +14,6 @@ const ROLE_LABEL = {
   REPORT_OWNER: 'Report Owner',
 };
 
-export function BrandMark() {
-  return (
-    <span className="brand-mark" aria-hidden="true">
-      <svg width="18" height="18" viewBox="0 0 16 16">
-        <circle cx="8" cy="8" r="6.2" fill="none" stroke="#b87333" strokeWidth="1.6" />
-        <path d="M8 4.4V8l2.6 1.6" fill="none" stroke="#f5f5f5" strokeWidth="1.6" strokeLinecap="round" />
-      </svg>
-    </span>
-  );
-}
-
 const initials = (name) =>
   name
     .replace(/\(.*\)/, '')
@@ -83,7 +72,6 @@ export function Layout() {
     <div className="app">
       <header className="topnav">
         <div className="brand">
-          <BrandMark />
           <div>
             <div className="brand-name">Pure Insights</div>
             <div className="brand-sub">Command Center</div>
@@ -101,14 +89,14 @@ export function Layout() {
           {user.ownerScoped && <span className="chip accent">Scoped to {user.ownerEmail}</span>}
           <button
             type="button"
-            className="icon-btn"
+            className="mute-toggle"
             onClick={() => setMuted(!muted)}
             aria-pressed={muted}
-            aria-label={muted ? 'Notifications muted — unmute' : 'Mute notifications'}
-            title={muted ? 'Notifications muted — click to unmute' : 'Notifications on — click to mute'}
+            title={muted ? 'Notifications are muted — click to unmute' : 'Notifications are on — click to mute'}
           >
             {muted ? <BellOffIcon /> : <BellIcon />}
             {!muted && counts.total > 0 && <span className="badge-dot" />}
+            {muted ? 'Unmute notifications' : 'Mute notifications'}
           </button>
           <UserMenu
             user={user}

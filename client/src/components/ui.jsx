@@ -20,9 +20,9 @@ export function Panel({ title, sub, actions, children, flush = false, className 
   );
 }
 
-export function Kpi({ label, value, unit, foot, flag = false, wide = false, to, toLabel, children }) {
+export function Kpi({ label, value, unit, foot, flag = false, wide = false, tone, to, toLabel, children }) {
   return (
-    <div className={`kpi ${flag ? 'flag' : ''} ${wide ? 'wide' : ''}`}>
+    <div className={`kpi ${flag ? 'flag' : ''} ${wide ? 'wide' : ''} ${tone ?? ''}`}>
       <span className="label">{label}</span>
       {to && (
         <Link to={to} className="icon-btn dark sm kpi-link" aria-label={toLabel ?? `Open ${label}`} title={toLabel ?? `Open ${label}`}>

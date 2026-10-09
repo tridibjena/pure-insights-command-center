@@ -71,5 +71,12 @@ export function createTelemetryIngest({ pool, hub, thresholds, logger }) {
     return run;
   }
 
-  return { ingest };
+  /** Run fn with no ingest in flight (same serial queue) — used for maintenance such as replay reset. */
+  function exclusive(fn) {
+    const run = queue.then(fn);
+    queue = run.catch((err) => logger.error({ err }, 'exclusive telemetry task failed'));
+    return run;
+  }
+
+  return { ingest, exclusive };
 }

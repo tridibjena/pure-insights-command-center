@@ -9,7 +9,10 @@ export const C = {
   hairline: '#2c2c2e',
   hairlineLit: '#3a3a3d',
   panel: '#1e1e1f', // card surface (marker rings, gaps)
-  accent: '#b87333',
+  // Everpure brand orange, darker step (--ps-color-brand-600): passes the full CVD/contrast
+  // validation against series-2 on the card surface; the lighter #ff7023 is the UI accent.
+  accent: '#d55d1d',
+  accentMuted: '#aa4b17', // --ps-color-brand-700
   series2: '#5b8fd1',
   neutral: '#4a4f57',
 };

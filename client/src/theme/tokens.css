@@ -5,8 +5,9 @@
    navigation, very large light-weight titles and numbers, generously rounded
    cards in two tones (charcoal for tables/charts, lighter "glass" grey for
    KPIs), rounded pill filter groups, gradient bars with a solid cap, and a
-   glow callout. Colour elements come from the agent-auto-optimizer system
-   (copper accent, neutral text scale). Severity colours are validated for CVD
+   glow callout. The accent is the Everpure brand orange (#ff7023, from the
+   everpuredata.com design tokens --ps-color-brand-500); the neutral text scale
+   follows the agent-auto-optimizer system. Severity colours are validated for CVD
    separation, normal-vision separation and >= 3:1 contrast on the card
    surface, and always travel with an icon and a text label.
    ─────────────────────────────────────────────────────────────────────────── */
@@ -14,7 +15,7 @@
 :root {
   color-scheme: dark;
 
-  --canvas:     #121213;
+  --canvas:     #0b0b0c;
   --card:       #1e1e1f;   /* charcoal cards: tables, charts */
   --glass:      #333335;   /* KPI cards */
   --glass-2:    #2a2a2c;
@@ -29,10 +30,13 @@
   --dim:    #7c7c82;
   --faint:  #56565b;
 
-  --accent:      #b87333;
-  --accent-fill: #a5612a;   /* filled pills with white text */
-  --accent-text: #dd9a5e;
-  --accent-soft: rgba(184, 115, 51, 0.16);
+  /* Everpure brand orange ramp (--ps-color-brand-400/500/600) */
+  --accent:      #ff7023;
+  --accent-600:  #d55d1d;
+  --accent-fill: #ff7023;   /* filled pills — paired with near-black text (6.8:1) */
+  --on-accent:   #121213;
+  --accent-text: #ff8848;   /* orange text on dark surfaces (7:1) */
+  --accent-soft: rgba(255, 112, 35, 0.15);
 
   --series-2: #5b8fd1;
 
@@ -42,7 +46,7 @@
   --sev-critical: #c63d42;
   --sev-critical-text: #ea7a76;
 
-  --font-sans: "Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: "Geist Variable", Geist, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --r-card: 22px;
@@ -56,10 +60,9 @@ body {
   margin: 0;
   color: var(--text-2);
   background:
-    radial-gradient(1100px 620px at 100% 100%, rgba(184, 115, 51, 0.10), transparent 62%),
-    radial-gradient(900px 500px at 0% 0%, rgba(255, 255, 255, 0.025), transparent 60%),
+    radial-gradient(1100px 620px at 100% 100%, rgba(255, 112, 35, 0.07), transparent 62%),
+    radial-gradient(900px 500px at 0% 0%, rgba(255, 255, 255, 0.018), transparent 60%),
     var(--canvas);
-  background-attachment: fixed;
   font-family: var(--font-sans);
   font-size: 13.5px;
   font-weight: 400;
@@ -95,9 +98,9 @@ h3 { font-size: 14px; font-weight: 450; }
   position: sticky; top: 0; z-index: 30;
   display: flex; align-items: center; gap: 22px;
   padding: 14px 40px;
-  background: rgba(18, 18, 19, 0.82); backdrop-filter: blur(14px);
+  background: rgba(11, 11, 12, 0.85); backdrop-filter: blur(14px);
 }
-.brand { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.brand { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; text-decoration: none; }
 .brand-mark { width: 34px; height: 34px; flex: 0 0 34px; border-radius: 50%; background: var(--chip); display: grid; place-items: center; }
 .brand-name { font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.15; letter-spacing: -0.01em; }
 .brand-sub { font-size: 11.5px; color: var(--dim); }
@@ -109,8 +112,9 @@ h3 { font-size: 14px; font-weight: 450; }
   color: var(--text-2); font-size: 13.5px; transition: background .15s, color .15s;
 }
 .nav a:hover { background: var(--chip); }
-.nav a.active { background: var(--accent-fill); color: #fff; }
+.nav a.active { background: var(--accent-fill); color: var(--on-accent); font-weight: 500; }
 .nav a .count { font-family: var(--font-mono); font-size: 10.5px; padding: 1px 6px; border-radius: 999px; background: rgba(255,255,255,0.12); }
+.nav a.active .count { background: rgba(0,0,0,0.16); }
 .top-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .chip {
   display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px;
@@ -124,13 +128,19 @@ h3 { font-size: 14px; font-weight: 450; }
 }
 .icon-btn:hover { background: var(--chip-hover); }
 .icon-btn:focus-visible { outline: 2px solid var(--accent); }
+.mute-toggle { all: unset; box-sizing: border-box; cursor: pointer; position: relative; display: inline-flex; align-items: center; gap: 8px;
+  height: 36px; padding: 0 14px 0 12px; border-radius: var(--r-ctrl); background: var(--chip); color: var(--text-2); font-size: 12.5px; white-space: nowrap; transition: background .15s; }
+.mute-toggle:hover { background: var(--chip-hover); }
+.mute-toggle:focus-visible { outline: 2px solid var(--accent); }
+.mute-toggle[aria-pressed="true"] { color: var(--accent-text); background: var(--accent-soft); }
+.mute-toggle .badge-dot { position: absolute; top: 7px; left: 22px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--chip); }
 .icon-btn .badge-dot { position: absolute; top: 7px; right: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--chip); }
 .icon-btn.dark { background: #0d0d0e; color: var(--text); }
 .icon-btn.sm { width: 30px; height: 30px; flex-basis: 30px; }
 .user-chip { all: unset; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 3px 14px 3px 3px; border-radius: var(--r-ctrl); background: var(--chip); }
 .user-chip:hover { background: var(--chip-hover); }
 .user-chip:focus-visible { outline: 2px solid var(--accent); }
-.avatar { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(140deg, #c8834a, #7c4a22); color: #fff; font-size: 11.5px; font-weight: 600; }
+.avatar { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(180deg, var(--accent) 0%, var(--accent-600) 100%); color: var(--on-accent); font-size: 11.5px; font-weight: 600; }
 .user-chip .who { line-height: 1.15; }
 .user-chip .who b { display: block; font-size: 12.5px; font-weight: 500; color: var(--text); }
 .user-chip .who span { font-size: 11px; color: var(--dim); }
@@ -144,7 +154,7 @@ h3 { font-size: 14px; font-weight: 450; }
 .content { padding: 26px 40px 64px; max-width: 1560px; margin: 0 auto; }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin: 6px 0 24px; flex-wrap: wrap; }
 .page-head p { margin: 10px 0 0; color: var(--muted); max-width: 82ch; font-size: 13.5px; }
-.page-head .meta { display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border-radius: var(--r-ctrl); background: #0d0d0e; color: var(--text-2); font-size: 12.5px; }
+.page-head .meta { display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border-radius: var(--r-ctrl); background: var(--chip); color: var(--text-2); font-size: 12.5px; }
 
 /* ── Layout ────────────────────────────────────────────────────────────────*/
 .grid { display: grid; gap: var(--gap); }
@@ -182,6 +192,10 @@ h3 { font-size: 14px; font-weight: 450; }
 .kpi.wide { grid-column: span 2; }
 .kpi.wide .value { font-size: 64px; letter-spacing: -0.05em; }
 .kpi .kpi-link { position: absolute; top: 16px; right: 16px; }
+/* The most severe tier is called out with a red card (white text >= 5:1 on both gradient stops) */
+.kpi.critical { background: linear-gradient(165deg, #c63d42 0%, #a3262c 100%); }
+.kpi.critical .label, .kpi.critical .value { color: #fff; }
+.kpi.critical .foot, .kpi.critical .value small { color: rgba(255, 255, 255, 0.86); }
 /* Overview layout: hero spans two rows beside a 3×2 block of KPI cards */
 .kpis.hero-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .kpis.hero-grid .kpi.wide { grid-column: span 2; grid-row: span 2; justify-content: space-between; }
@@ -211,7 +225,7 @@ h3 { font-size: 14px; font-weight: 450; }
 .btn.ghost { background: transparent; color: var(--muted); }
 .btn.ghost:hover { background: var(--chip); color: var(--text); }
 .btn.accent { background: var(--accent-soft); color: var(--accent-text); }
-.btn.accent:hover { background: rgba(184, 115, 51, 0.26); }
+.btn.accent:hover { background: rgba(255, 112, 35, 0.26); }
 .btn.sm { height: 28px; padding: 0 12px; font-size: 12px; }
 
 .input, .select, textarea.input {
@@ -254,16 +268,16 @@ tbody tr td:first-child { border-radius: 12px 0 0 12px; }
 tbody tr td:last-child { border-radius: 0 12px 12px 0; }
 tbody tr:hover td { background: rgba(255,255,255,.035); }
 tbody tr.clickable { cursor: pointer; }
-tr.flagged td { background: rgba(184, 115, 51, 0.08); }
-tr.flagged:hover td { background: rgba(184, 115, 51, 0.13); }
+tr.flagged td { background: rgba(255, 112, 35, 0.07); }
+tr.flagged:hover td { background: rgba(255, 112, 35, 0.12); }
 .sub-text { display: block; color: var(--dim); font-size: 11.5px; margin-top: 2px; }
 
 /* ── Notes & states ────────────────────────────────────────────────────────*/
 .note {
   border-radius: 18px; padding: 16px 22px; color: var(--muted); font-size: 13px; line-height: 1.6;
   background:
-    radial-gradient(420px 160px at 92% 50%, rgba(184, 115, 51, 0.34), transparent 70%),
-    radial-gradient(260px 120px at 70% 120%, rgba(184, 115, 51, 0.16), transparent 70%),
+    radial-gradient(420px 160px at 92% 50%, rgba(255, 112, 35, 0.30), transparent 70%),
+    radial-gradient(260px 120px at 70% 120%, rgba(213, 93, 29, 0.16), transparent 70%),
     var(--card);
 }
 .note strong { color: var(--text); font-weight: 500; }
@@ -272,7 +286,7 @@ tr.flagged:hover td { background: rgba(184, 115, 51, 0.13); }
 .stale { opacity: .5; transition: opacity .15s; }
 
 .meter { height: 6px; border-radius: 999px; background: var(--chip); overflow: hidden; }
-.meter > span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, rgba(184,115,51,.45), var(--accent)); transition: width .4s; }
+.meter > span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent-600), var(--accent)); transition: width .4s; }
 .kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 18px 24px; }
 .kv .v { font-size: 22px; font-weight: 300; letter-spacing: -0.03em; margin-top: 6px; color: var(--text); }
 
@@ -285,7 +299,14 @@ tr.flagged:hover td { background: rgba(184, 115, 51, 0.13); }
 .toast .t-title { font-size: 13px; font-weight: 500; color: var(--text); }
 .toast .t-msg { grid-column: 2 / 4; font-size: 12px; color: var(--muted); }
 .toast .t-close { all: unset; cursor: pointer; color: var(--dim); font-size: 16px; line-height: 1; }
-.toast.more { all: unset; cursor: pointer; text-align: center; font-size: 12px; color: var(--text-2); padding: 9px 14px; background: #0d0d0e; border-radius: 999px; }
+.toast .t-icon { display: grid; place-items: center; width: 18px; height: 18px; margin-top: 1px; }
+/* Critical notifications use the same red treatment as the Critical card (white text >= 5:1) */
+.toast.toast-CRITICAL { background: linear-gradient(165deg, #c63d42 0%, #a3262c 100%); box-shadow: 0 18px 44px rgba(163, 38, 44, .35); }
+.toast.toast-CRITICAL .t-title { color: #fff; }
+.toast.toast-CRITICAL .t-msg { color: rgba(255, 255, 255, 0.88); }
+.toast.toast-CRITICAL .t-close { color: rgba(255, 255, 255, 0.85); }
+.toast.toast-CRITICAL .t-icon { background: #fff; border-radius: 50%; }
+.toast.more { all: unset; cursor: pointer; text-align: center; font-size: 12px; color: var(--text-2); padding: 9px 14px; background: var(--chip); border-radius: 999px; }
 .toast.more:hover { color: var(--text); }
 @keyframes toast-in { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .toast { animation: none; } }

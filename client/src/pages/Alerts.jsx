@@ -118,7 +118,7 @@ export function Alerts() {
       </PageHead>
       <div className="grid grid-12" style={{ alignItems: 'start' }}>
         <div className={`kpis ${can('health:read') ? 'span-8' : 'span-12'}`}>
-          <Kpi label="Critical" value={counts.CRITICAL} foot="Load > 45 s or refresh FAILED" />
+          <Kpi label="Critical" tone="critical" value={counts.CRITICAL} foot="Load > 45 s or refresh FAILED" />
           <Kpi label="High" value={counts.HIGH} foot="Load 30–45 s or refresh TIMED_OUT" />
           <Kpi label="Warning" value={counts.WARNING} foot="Load 15–30 s or status UNKNOWN" />
           <Kpi label="Resolved" value={resolvedCount} foot={`${folded} repeat breaches folded into existing incidents`} />

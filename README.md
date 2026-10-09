@@ -84,11 +84,14 @@ and the tests in [`pipeline/tests/`](pipeline/tests).
 ## Screenshots
 
 All screenshots come from the running application with the real dataset (`npm run screenshots`). The UI is
-dark-only. Its layout takes inspiration from a two-tone analytics dashboard concept: a top pill navigation, large
-light-weight titles and numbers, rounded charcoal cards for tables and charts, lighter glass cards for KPIs, pill
-filter groups, gradient bars with a solid cap, and a glow callout. Colours come from the agent-auto-optimizer system,
-with copper as the single accent. Severity is always shown with an icon and a label, never by colour alone. Every
-page header shows the live alert counts and the WebSocket state; the bell in the top bar mutes notifications.
+dark-only, set in Geist, with the **Everpure brand orange** (`#ff7023`, from everpuredata.com's
+`--ps-color-brand-500` token) as the single accent and its darker step `#d55d1d` for chart marks. The layout takes
+inspiration from a two-tone analytics dashboard concept: a top pill navigation, large light-weight titles and
+numbers, rounded charcoal cards for tables and charts, lighter glass cards for KPIs, pill filter groups, gradient bars
+with a solid cap, and a glow callout. The most severe tier is called out in red: the Critical card and critical
+pop-up notifications use a red background. Severity is always shown with an icon and a label, never by colour alone.
+Every page header shows the live alert counts and the WebSocket state; the **Mute notifications** button in the top
+bar silences pop-ups.
 
 ### 1 · Sign in
 

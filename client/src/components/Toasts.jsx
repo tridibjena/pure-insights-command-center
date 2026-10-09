@@ -10,7 +10,7 @@ export function Toasts() {
     <div className="toasts" role="status" aria-live="polite">
       {toasts.map((t) => (
         <div key={t.id} className={`toast toast-${t.severity}`}>
-          <SeverityIcon severity={t.severity} size={14} />
+          <span className="t-icon"><SeverityIcon severity={t.severity} size={14} /></span>
           <div className="t-title">
             {t.kind === 'alert.escalated' ? 'Escalated · ' : ''}
             {t.title}
