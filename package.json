@@ -20,6 +20,7 @@
     "test:server": "npm --workspace server test",
     "test:client": "npm --workspace client test",
     "verify": "cd pipeline && .venv/bin/python -m pic_pipeline.cli cost && .venv/bin/python -m pic_pipeline.cli verify",
+    "verify:snowflake": "cd pipeline && .venv/bin/python -W ignore -m pic_pipeline.cli export && .venv/bin/python -W ignore -m pic_pipeline.cli snowflake",
     "lint": "cd pipeline && .venv/bin/ruff check . && cd .. && npm --workspace server run lint && npm --workspace client run lint",
     "screenshots": "cd pipeline && .venv/bin/python -m pic_pipeline.screenshots"
   },

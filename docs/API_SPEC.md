@@ -136,7 +136,7 @@ return 404.
 | GET | `/api/telemetry/recent` | `health:read` | Latest telemetry events |
 | GET | `/api/telemetry/replay` | `health:read` | Replay status |
 | POST | `/api/telemetry/replay/start` \| `stop` \| `reset` \| `config` | `replay:control` | Replay control (`config` takes `intervalMs`, `loop`, `pauseAfterSnapshot`) |
-| GET | `/api/costs/summary` | `costs:read` | Portfolio unit cost, reconciliation, quarantine, idle, discrepancy |
+| GET | `/api/costs/summary` | `costs:read` | Portfolio unit cost, reconciliation, quarantine, metering, discrepancy, unit cost by edition price |
 | GET | `/api/costs/reports` | `costs:read` | Per-report unit cost, ranking, decommission flag, Method A vs B |
 | GET | `/api/costs/reports/{reportId}` | `costs:read` | Monthly unit cost and Method B allocation |
 | GET | `/api/costs/trend` | `costs:read` | Monthly Snowflake and AWS spend |
@@ -144,6 +144,7 @@ return 404.
 | GET | `/api/costs/discrepancy` | `costs:read` | AWS cost vs views, with the 3×IQR fence and flags |
 | GET | `/api/data-quality/summary` | `dq:read` | Totals, credits before/after quarantine, latency extremes |
 | GET | `/api/data-quality/rules` | `dq:read` | Rule catalog with counts |
+| GET | `/api/data-quality/forensics` | `dq:read` | Statistical checks behind the structural findings |
 | GET | `/api/data-quality/issues` | `dq:read` | Anomaly register rows |
 | GET | `/api/admin/users` | `users:read` | Accounts |
 | GET | `/api/admin/rbac` | `users:read` | Role → permission matrix |

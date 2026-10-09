@@ -17,15 +17,19 @@ names follow Snowflake's documented views.
 
 | Simulated view | Grain | How it is derived |
 |---|---|---|
-| `QUERY_HISTORY` | one row per representative query batch (≈ 1 per 1,000 executions; ≥ 1 per report-month) → 25,830 rows | `QUERY_TAG = 'pure-insights:report=<id>'`; each report pinned to one of 3 warehouses; execution time follows the credits each batch burns at the warehouse's hourly rate, with lognormal jitter for concurrency |
+| `QUERY_HISTORY` | one row per representative query batch (≈ 1 per 1,000 executions; ≥ 1 per report-month) → 25,230 rows | `QUERY_TAG = 'pure-insights:report=<id>'`; each report pinned to one of 3 warehouses; execution time follows the credits each batch burns at the warehouse's hourly rate. Failed and timed-out refreshes in the CSV leave a failed batch (`000630` statement timeout / `002003` missing object) |
 | `QUERY_ATTRIBUTION_HISTORY` | one row per query | the report-month's CSV credits split across its batches in proportion to execution weight, so they **reconcile exactly** to the CSV. The 24 negative-credit report-months keep their negative values, so the injected defect exists at source |
-| `WAREHOUSE_METERING_HISTORY` | warehouse × hour → 19,323 rows | valid (non-negative) attributed credits booked to the hour each batch starts, plus idle time at a fixed per-warehouse ratio (S 12 %, M 8 %, L 5 %). `CREDITS_ATTRIBUTED_COMPUTE_QUERIES` excludes idle, as in Snowflake |
-| (ad-hoc work) | 600 untagged analyst queries ≈ 3 % of report credits | gives the suite unattributable spend to separate out |
+| `WAREHOUSE_METERING_HISTORY` | warehouse × hour → 18,999 rows | valid (non-negative) attributed credits booked to the hour each batch starts. `CREDITS_ATTRIBUTED_COMPUTE_QUERIES` excludes idle, as in Snowflake |
 | `PORTAL.REPORT_USAGE_MONTHLY` | report × month (2,000) | the portal's own facts: owner, views, peak users, AWS cost, credits as reported by the legacy export |
-| `PORTAL.CREDIT_PRICING` | one row | `CREDIT_PRICE_USD` (default **$3.00**). Not in the data; this is an assumption standing in for `ORGANIZATION_USAGE.RATE_SHEET_DAILY` |
+| `PORTAL.CREDIT_PRICING` | one row | `CREDIT_PRICE_USD` = **$3.00**, Snowflake's on-demand list price for Enterprise edition on AWS US East (stand-in for `ORGANIZATION_USAGE.RATE_SHEET_DAILY`) |
 
-Simulated-only figures (idle, untagged spend, failed-query spend) are labelled as such wherever they are shown.
-Every figure that traces back to the CSV reconciles to it exactly.
+**The simulated layer adds no spend of its own.** The CSV carries no evidence of warehouse idle time, untagged ad-hoc
+work or concurrency effects, so none is invented. Every cost figure therefore traces back to the CSV, and Method A and
+Method B agree to within ±0.07 % per report. The only difference comes from hours where a quarantined negative-credit
+batch shares the warehouse. The SQL still measures idle time (`v_warehouse_idle`), untagged spend (the `UNTAGGED`
+quarantine class) and A/B divergence. `test_suite_measures_idle_untagged_and_method_divergence_when_present` switches
+those effects on (`SimulationKnobs`: 8 % idle, 3 % untagged, execution-time jitter) and checks the SQL detects all three
+while every reconciliation check still passes.
 
 ## 2. Attribution
 
@@ -50,7 +54,8 @@ This is the classic approach. Each warehouse-hour's `CREDITS_USED_COMPUTE` (the 
 across the queries that ran in that hour by their share of `EXECUTION_TIME`. Untagged work goes to
 `UNATTRIBUTED`, and metered hours with no queries are reported as unallocated idle. Method B allocates the
 entire bill but is less precise per report, because execution time is only a proxy for credits under
-concurrency. The per-report A vs B difference is shown on the Cost page.
+concurrency. On a live account the per-report A vs B gap (shown on the Cost page) measures that imprecision plus each
+report's share of idle time. On this dataset the gap is ≤ 0.07 %, because the CSV implies neither.
 
 ## 3. Anomaly filtering (before any money is computed)
 
@@ -60,7 +65,7 @@ concurrency. The per-report A vs B difference is shown on the Cost page.
 |---|---|---|---|
 | `VALID` | tagged, known report, credits ≥ 0 | 24,934 | attributed |
 | `NEGATIVE_CREDITS` | credits < 0 | 296 rows / 24 reports / **−161.04** credits | **quarantined**, not abs()'d (that would invent spend) and not zeroed (that would understate cost per view) |
-| `UNTAGGED` | no portal tag | 600 | reported separately as unattributable |
+| `UNTAGGED` | no portal tag | 0 here (600 when switched on in tests) | reported separately as unattributable |
 | `UNKNOWN_REPORT` / `NULL_CREDITS` | tag for a report the portal doesn't know / NULL | 0 | quarantined |
 
 ## 4. Unit cost per active user view
@@ -83,6 +88,17 @@ fully_loaded_cost_per_view = (Method-A credits × credit_price + aws_hosting_cos
 | Fully loaded cost / active view | **$2.740** |
 | Per-report fully loaded range | $1.83 – $4.99 (median $2.72) |
 
+**Price sensitivity** (`v_unit_cost_price_sensitivity`, on-demand list prices, AWS US East):
+
+| Edition | $/credit | Snowflake $/view | Fully loaded $/view |
+|---|---|---|---|
+| Standard | $2.00 | $1.623 | $1.929 |
+| Enterprise *(in use)* | $3.00 | $2.434 | $2.740 |
+| Business Critical | $4.00 | $3.245 | $3.551 |
+
+> **Statistical caveat.** Report identity explains none of the variance in this dataset (permutation ANOVA p = 0.14–0.88;
+> see forensic check 2). The per-report range and rankings demonstrate the method; the portfolio figures are robust.
+
 ## 5. Discrepancies between active users and AWS cost (`07_…`)
 
 * Pearson correlation of views vs AWS cost is **−0.027** (Spearman with tie-aware ranks −0.027; −0.083 at report grain). Hosting cost does not follow usage.
@@ -97,16 +113,18 @@ fully_loaded_cost_per_view = (Method-A credits × credit_price + aws_hosting_cos
 | 1 | Method A = source credits ≥ 0 | 1,206,352.48 | 1,206,352.48 | PASS |
 | 2 | Quarantined = source negatives | −161.04 | −161.04 | PASS |
 | 3 | Every report-month reconciles (±0.0001) | 0 mismatches | 0 | PASS |
-| 4 | Method B + unallocated = metered compute | 1,344,783.71 | 1,344,783.71 | PASS |
-| 5 | Metered query credits = all non-negative attribution | 1,242,543.05 | 1,242,543.05 | PASS |
+| 4 | Method B + unallocated = metered compute | 1,206,352.48 | 1,206,352.48 | PASS |
+| 5 | Metered query credits = all non-negative attribution | 1,206,352.48 | 1,206,352.48 | PASS |
 | 6 | No unit cost on zero-view months | 0 | 0 | PASS |
 
-`npm run verify` re-runs the suite and fails if any check is not `PASS`. The pytest suite also runs it against
-the test database.
+`npm run verify` re-runs the suite on PostgreSQL and fails if any check is not `PASS`. `npm run verify:snowflake`
+parses every statement as Snowflake SQL and executes the suite in Snowflake dialect on the fakesnow emulator. All six
+checks pass there with figures identical to PostgreSQL. Both runs are part of the pytest suite. `python -m
+pic_pipeline.cli snowflake-live` runs the same verification on a real account when `SNOWFLAKE_*` credentials are set.
 
-## 7. Assumptions
+## 7. Inputs and how each is grounded
 
-1. The 20 passes over the 100 reports are 20 consecutive monthly snapshots (2025-01 → 2026-08). The CSV has no timestamp.
-2. The credit price is $3.00 (configurable).
-3. Warehouse assignment, idle ratios, ad-hoc volume and execution-time jitter are simulation parameters. Only the per-report credits come from the data.
-4. The query tag format `pure-insights:report=<id>` is a portal convention. On a live account it would be set per request (`ALTER SESSION SET QUERY_TAG`).
+1. **Timeline.** The 20 passes are consecutive monthly snapshots. This is tested: lag-1 autocorrelation of the 30-day metrics is ≈ 0, where rolling daily windows would give ≈ +0.97. They are anchored to the last complete month before the data was received: Feb 2025 → Sep 2026 (`DATA_AS_OF_MONTH`).
+2. **Credit price.** $3.00 is Snowflake's on-demand list price for Enterprise edition on AWS US East; Standard is $2.00 and Business Critical $4.00. All three appear in `v_unit_cost_price_sensitivity`.
+3. **Simulation structure.** Warehouse assignment, batch sampling and start times only shape the logs; they do not change any reported figure. Idle time, untagged work and jitter are 0 because the CSV carries no evidence of them.
+4. **Query tag.** The format `pure-insights:report=<id>` is a portal convention. On a live account it would be set per request (`ALTER SESSION SET QUERY_TAG`).

@@ -176,7 +176,7 @@ export function Costs() {
 
   return (
     <div className="stack">
-      <PageHead title="Cost Allocation" actions={<span className="meta">{fmtUsd(s.pricing.credit_price_usd)} / credit</span>}>
+      <PageHead title="Cost Allocation" actions={<span className="meta">{fmtUsd(s.pricing.credit_price_usd)} / credit · Enterprise on-demand, AWS US East</span>}>
         Snowflake credits attributed to individual reports from (simulated) <span className="mono">ACCOUNT_USAGE</span> logs via
         each query’s <span className="mono">QUERY_TAG</span>, then divided by monthly active views. Negative credits are
         quarantined, not abs()’d or zeroed. Same SQL as <span className="mono">sql/snowflake/</span>.
@@ -213,7 +213,25 @@ export function Costs() {
               </tbody>
             </table>
           </Panel>
-          <Panel title="Warehouse idle (simulated)" sub="Metered compute not attributable to any query — Method B spreads it, Method A excludes it" flush>
+          <Panel title="Unit cost by Snowflake edition" sub="On-demand list price, AWS US East — the credit price is a contract term, so all three are shown" flush>
+            <div className="table-wrap">
+            <table>
+              <thead><tr><th>Edition</th><th className="r">$/credit</th><th className="r">Snowflake</th><th className="r">SF $/view</th><th className="r">Loaded $/view</th></tr></thead>
+              <tbody>
+                {(s.priceSensitivity ?? []).map((r) => (
+                  <tr key={r.edition} className={r.credit_price_usd === s.pricing.credit_price_usd ? 'flagged' : ''}>
+                    <td style={{ whiteSpace: 'nowrap' }}>{r.edition}{r.credit_price_usd === s.pricing.credit_price_usd && <span className="sub-text accent">in use</span>}</td>
+                    <td className="num r">{fmtUsd(r.credit_price_usd)}</td>
+                    <td className="num r">{fmtUsdCompact(r.snowflake_cost_usd)}</td>
+                    <td className="num r">{fmtUsd(r.snowflake_cost_per_view_usd, 3)}</td>
+                    <td className="num r">{fmtUsd(r.fully_loaded_cost_per_view_usd, 3)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            </div>
+          </Panel>
+          <Panel title="Warehouse metering" sub="Metered vs query-attributed credits. The CSV carries no idle or untagged usage, so none is simulated; on a live account the idle column shows real idle." flush>
             <table>
               <thead><tr><th>Warehouse</th><th className="r">Metered</th><th className="r">Idle</th><th className="r">Idle share</th></tr></thead>
               <tbody>

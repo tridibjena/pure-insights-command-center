@@ -385,7 +385,7 @@ paths:
   /api/costs/summary:
     get:
       tags: [Costs]
-      summary: Portfolio unit cost, reconciliation checks, quarantine, warehouse idle, discrepancy and orphan summaries
+      summary: Portfolio unit cost, reconciliation checks, quarantine, warehouse metering, discrepancy and orphan summaries, and unit cost by Snowflake edition price
       x-permission: costs:read
       responses:
         '200':
@@ -446,6 +446,17 @@ paths:
       summary: Rule catalog with rows/reports affected
       x-permission: dq:read
       responses: { '200': { description: OK } }
+  /api/data-quality/forensics:
+    get:
+      tags: [DataQuality]
+      summary: Statistical checks behind the dataset's structural findings (snapshot independence, report-identity signal, owner assignment, UNKNOWN status, anomaly overlap)
+      x-permission: dq:read
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              example: { checks: [{ check_code: SNAPSHOT_INDEPENDENCE, ordinal: 1, title: Snapshots are consecutive non-overlapping 30-day periods, question: '…', method: '…', result: 'Mean lag-1 autocorrelation …', conclusion: '…', treatment: '…' }] }
   /api/data-quality/issues:
     get:
       tags: [DataQuality]

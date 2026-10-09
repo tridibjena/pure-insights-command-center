@@ -73,6 +73,29 @@ SELECT COUNT(*)                                                              AS 
            / NULLIF(SUM(views_with_valid_credits), 0)                        AS fully_loaded_cost_per_view_usd
 FROM cost.v_unit_cost_report;
 
+-- Price sensitivity: the credit price is a contract term, not data. Recompute the portfolio unit
+-- cost at Snowflake's on-demand list prices for AWS US East (N. Virginia).
+CREATE OR REPLACE VIEW cost.v_unit_cost_price_sensitivity AS
+WITH editions AS (
+    SELECT 1 AS ordinal, 'Standard' AS edition, CAST(2.00 AS NUMERIC(10,2)) AS credit_price_usd
+    UNION ALL SELECT 2, 'Enterprise', CAST(3.00 AS NUMERIC(10,2))
+    UNION ALL SELECT 3, 'Business Critical', CAST(4.00 AS NUMERIC(10,2))
+),
+portfolio AS (
+    SELECT SUM(snowflake_credits)        AS credits,
+           SUM(views_with_valid_credits) AS views_valid,
+           SUM(aws_cost_valid_months)    AS aws_valid
+    FROM cost.v_unit_cost_report
+)
+SELECT e.ordinal,
+       e.edition,
+       e.credit_price_usd,
+       p.credits * e.credit_price_usd                                         AS snowflake_cost_usd,
+       p.credits * e.credit_price_usd / NULLIF(p.views_valid, 0)              AS snowflake_cost_per_view_usd,
+       (p.credits * e.credit_price_usd + p.aws_valid) / NULLIF(p.views_valid, 0) AS fully_loaded_cost_per_view_usd
+FROM editions e
+CROSS JOIN portfolio p;
+
 SELECT report_id, report_name, total_views, snowflake_credits,
        ROUND(snowflake_cost_per_view_usd, 4)     AS snowflake_usd_per_view,
        ROUND(fully_loaded_cost_per_view_usd, 4)  AS fully_loaded_usd_per_view

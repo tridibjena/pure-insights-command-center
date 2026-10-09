@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from .config import SIMULATED_DIR
 from .db import connect, query_df
 
@@ -15,15 +17,15 @@ EXPORTS = {
 }
 
 
-def run(test: bool = False) -> dict[str, int]:
-    SIMULATED_DIR.mkdir(parents=True, exist_ok=True)
+def run(test: bool = False, out_dir: Path = SIMULATED_DIR) -> dict[str, int]:
+    out_dir.mkdir(parents=True, exist_ok=True)
     counts = {}
     with connect(test) as conn:
         for name, sql in EXPORTS.items():
             df = query_df(conn, sql)
             for col in df.columns:
                 if hasattr(df[col], "dt") and getattr(df[col].dt, "tz", None) is not None:
-                    df[col] = df[col].dt.strftime("%Y-%m-%d %H:%M:%S.%f +00:00")
-            df.to_csv(SIMULATED_DIR / name, index=False)
+                    df[col] = df[col].dt.strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")  # ISO-8601: parsed by Snowflake AUTO
+            df.to_csv(out_dir / name, index=False)
             counts[name] = len(df)
     return counts

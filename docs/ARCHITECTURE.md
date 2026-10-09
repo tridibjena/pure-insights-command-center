@@ -44,7 +44,7 @@ checksums in `public.schema_migrations`.
 
 The CSV has no timestamp. The 2,000 rows are 20 complete, identically ordered passes over 100 report ids, which
 was verified for every row. The pipeline models them as a report **dimension** (100) and an **observation fact**
-(report × snapshot, 2,000). Snapshot *k* maps to month 2025-01 + (k − 1).
+(report × snapshot, 2,000). Snapshot *k* maps to month 2025-02 + (k − 1). The monthly cadence is tested (forensic check 1); the anchor is the last complete month before the data was received (`DATA_AS_OF_MONTH`).
 
 * **Current state** of a report = its latest snapshot.
 * **Current owner** = owner in the latest snapshot, or an admin override (`app.owner_overrides`, applied by `app.v_report_current`).

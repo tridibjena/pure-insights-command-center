@@ -15,10 +15,11 @@ Design (documented in docs/COST_ALLOCATION_METHODOLOGY.md):
   proportion to execution time, so per-report Method A totals equal the CSV exactly.
   The 24 negative-credit observations are carried through as negative attributions:
   the injected defect exists in the source logs and the SQL suite must filter it.
-* A small volume of untagged ad-hoc analyst queries shares the warehouses.
-* WAREHOUSE_METERING_HISTORY is hourly: valid attributed credits (tagged + untagged) booked
-  to the hour each batch starts, plus warehouse idle time at a fixed per-warehouse ratio.
-  credits_attributed_compute_queries excludes idle, as in Snowflake.
+* WAREHOUSE_METERING_HISTORY is hourly: valid attributed credits booked to the hour each batch
+  starts. credits_attributed_compute_queries excludes idle, as in Snowflake.
+* The CSV carries no evidence of warehouse idle time, untagged ad-hoc work or execution-time
+  concurrency effects, so by default none is invented (SimulationKnobs = 0). Tests switch the
+  knobs on to prove the SQL suite measures idle, untagged spend and Method A/B divergence.
 * Failed refreshes leave a failed query batch (TIMED_OUT → error 000630 statement timeout).
 """
 
@@ -29,6 +30,7 @@ import hashlib
 import numpy as np
 import pandas as pd
 
+from .config import SIM, SimulationKnobs
 from .db import connect, copy_dataframe, query_df
 
 SEED = 20260101
@@ -43,10 +45,8 @@ WAREHOUSES = pd.DataFrame(
         "warehouse_name": ["PI_REPORTING_WH_S", "PI_REPORTING_WH_M", "PI_REPORTING_WH_L"],
         "warehouse_size": ["Small", "Medium", "Large"],
         "credits_per_hour": [2.0, 4.0, 8.0],
-        "idle_ratio": [0.12, 0.08, 0.05],  # idle credits as a share of busy credits
     }
 )
-UNTAGGED_SHARE = 0.03  # ad-hoc credits relative to tagged report credits
 ERRORS = {
     "TIMED_OUT": (
         "000630",
@@ -68,7 +68,7 @@ def _random_starts(rng: np.random.Generator, month_start: pd.Timestamp, n: int) 
     return month_start + pd.to_timedelta(offsets, unit="s")
 
 
-def simulate(obs: pd.DataFrame, seed: int = SEED) -> dict[str, pd.DataFrame]:
+def simulate(obs: pd.DataFrame, seed: int = SEED, knobs: SimulationKnobs = SIM) -> dict[str, pd.DataFrame]:
     rng = np.random.default_rng(seed)
     obs = obs.sort_values("source_row_number").reset_index(drop=True)
     report_num = obs["report_id"].str.extract(r"(\d+)$")[0].astype(int)
@@ -81,12 +81,13 @@ def simulate(obs: pd.DataFrame, seed: int = SEED) -> dict[str, pd.DataFrame]:
         month_start = pd.Timestamp(o["period_month"], tz="UTC")
         starts = _random_starts(rng, month_start, n)
         # Execution time follows the credits each batch burns at the warehouse's hourly rate,
-        # with lognormal jitter for concurrency (why Method B only approximates Method A).
+        # optionally jittered to mimic concurrency (which makes Method B diverge from Method A).
         weights = rng.lognormal(0.0, 0.6, n)
         weights /= weights.sum()
         credits = float(o["credits_raw"]) * weights
         busy_hours = np.abs(credits) / w["credits_per_hour"]
-        exec_ms = np.maximum(1, (busy_hours * 3.6e6 * rng.lognormal(0.0, 0.3, n))).round().astype(np.int64)
+        jitter = rng.lognormal(0.0, knobs.exec_jitter, n) if knobs.exec_jitter > 0 else np.ones(n)
+        exec_ms = np.maximum(1, (busy_hours * 3.6e6 * jitter)).round().astype(np.int64)
         compile_ms = rng.integers(40, 900, n)
         queued_ms = np.where(rng.random(n) < 0.15, rng.integers(500, 30_000, n), 0)
         failed_idx = 0 if o["refresh_status"] in ERRORS else -1
@@ -128,8 +129,8 @@ def simulate(obs: pd.DataFrame, seed: int = SEED) -> dict[str, pd.DataFrame]:
 
     # Untagged ad-hoc analyst queries sharing the same warehouses
     valid_total = obs["credits_raw"].clip(lower=0).sum()
-    n_adhoc = 600
-    adhoc_credits = rng.dirichlet(np.ones(n_adhoc)) * valid_total * UNTAGGED_SHARE
+    n_adhoc = 600 if knobs.untagged_share > 0 else 0
+    adhoc_credits = rng.dirichlet(np.ones(n_adhoc)) * valid_total * knobs.untagged_share if n_adhoc else []
     months = sorted(obs["period_month"].unique())
     for k in range(n_adhoc):
         w = WAREHOUSES.iloc[k % 3]
@@ -210,9 +211,8 @@ def simulate(obs: pd.DataFrame, seed: int = SEED) -> dict[str, pd.DataFrame]:
         .sum()
         .rename(columns={"credits_attributed_compute": "credits_attributed_compute_queries", "hour": "start_time"})
     )
-    metering = metering.merge(WAREHOUSES[["warehouse_id", "idle_ratio"]], on="warehouse_id")
     busy = metering["credits_attributed_compute_queries"]
-    metering["credits_used_compute"] = (busy * (1 + metering["idle_ratio"])).round(9)
+    metering["credits_used_compute"] = (busy * (1 + knobs.idle_ratio)).round(9)
     metering["credits_attributed_compute_queries"] = metering["credits_attributed_compute_queries"].round(9)
     metering["credits_used_cloud_services"] = 0.0
     metering["credits_used"] = metering["credits_used_compute"]
@@ -236,7 +236,7 @@ def simulate(obs: pd.DataFrame, seed: int = SEED) -> dict[str, pd.DataFrame]:
     }
 
 
-def run(test: bool = False, credit_price_usd: float | None = None) -> dict[str, int]:
+def run(test: bool = False, credit_price_usd: float | None = None, knobs: SimulationKnobs = SIM) -> dict[str, int]:
     from .config import CREDIT_PRICE_USD
 
     with connect(test) as conn:
@@ -246,7 +246,7 @@ def run(test: bool = False, credit_price_usd: float | None = None) -> dict[str, 
                       query_count_last_30d, credits_raw::float8 AS credits_raw
                FROM app.report_observations ORDER BY source_row_number""",
         )
-        tables = simulate(obs)
+        tables = simulate(obs, knobs=knobs)
         counts = {}
         with conn.cursor() as cur:
             for table, df in tables.items():

@@ -11,7 +11,7 @@ active user view. It runs against simulated `ACCOUNT_USAGE` logs. Methodology, f
 | `02_anomaly_quarantine.sql` | `cost.v_query_attribution_classified`, `v_quarantine_summary`, `v_failed_query_spend` | Classifies every credit as VALID / NEGATIVE_CREDITS / UNTAGGED / UNKNOWN_REPORT |
 | `03_attribution_query_tag.sql` | `v_report_month_credits_method_a`, `v_report_credits_method_a` | **Method A**: per-query attribution by `QUERY_TAG` |
 | `04_attribution_metering_proportional.sql` | `v_query_hour_share`, `v_report_month_credits_method_b`, `v_metering_unallocated`, `v_attribution_method_comparison`, `v_warehouse_idle` | **Method B**: hourly metered bill allocated by execution-time share; idle analysis |
-| `05_unit_cost_per_active_view.sql` | `v_unit_cost_report_month`, `v_unit_cost_report`, `v_unit_cost_portfolio` | Snowflake, AWS and fully loaded cost per active view; zero-view and quarantine safe |
+| `05_unit_cost_per_active_view.sql` | `v_unit_cost_report_month`, `v_unit_cost_report`, `v_unit_cost_portfolio`, `v_unit_cost_price_sensitivity` | Snowflake, AWS and fully loaded cost per active view; zero-view and quarantine safe; unit cost at Standard / Enterprise / Business Critical list prices |
 | `06_orphaned_cost_exposure.sql` | `v_orphaned_cost_exposure`, `v_orphaned_cost_summary` | Spend with no accountable owner |
 | `07_aws_cost_vs_usage_discrepancy.sql` | `v_aws_cost_per_view_fence`, `v_aws_usage_discrepancy(_summary)`, `v_aws_usage_correlation` | Usage vs AWS cost discrepancies (IQR fence, zero views, peak > views, Pearson/Spearman) |
 | `08_chargeback_and_ranking.sql` | `v_chargeback_owner(_month)`, `v_report_cost_ranking`, `v_report_cost_mom`, `v_cost_trend_month` | Chargeback, ranking, decommission candidates, month-over-month change |
@@ -40,8 +40,20 @@ snowsql -f sql/snowflake/00_bootstrap_simulation_snowflake.sql   # after the PUT
 snowsql -d PURE_INSIGHTS_SIM -f sql/snowflake/01_source_profiling.sql   # … through 09
 ```
 
-The Snowflake path has not been executed here (no Snowflake account was available). The PostgreSQL path is
-exercised by `npm run verify` and by the test suite.
+### Verified as Snowflake SQL
+
+```bash
+npm run verify:snowflake      # or: cd pipeline && .venv/bin/python -m pic_pipeline.cli snowflake
+```
+
+1. **Parse.** Every statement in `00–09` parses as Snowflake SQL with `sqlglot`.
+2. **Execute.** The suite runs in Snowflake dialect on [fakesnow](https://github.com/tekumara/fakesnow), a Snowflake
+   emulator backed by DuckDB. `00`'s DDL builds `PURE_INSIGHTS_SIM`, the exported logs are loaded, `01–09` execute, and all 6
+   reconciliation checks pass with figures identical to PostgreSQL. The emulator has no stages and no `ALTER SESSION`, so
+   `00`'s `PUT`/`COPY INTO` are replaced by a bulk load there. Both are covered by the live run below.
+3. **Live.** `python -m pic_pipeline.cli snowflake-live` runs the complete script, including `PUT` and `COPY INTO`, against a real account
+   when `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER` and `SNOWFLAKE_PASSWORD` (optionally `SNOWFLAKE_WAREHOUSE`, `SNOWFLAKE_ROLE`) are set.
+   This needs an account, for example a free trial, and is the only step not yet run.
 
 ## Run against a live Snowflake account
 

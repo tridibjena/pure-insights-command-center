@@ -73,6 +73,24 @@ describe('role-based access control', () => {
     assert.equal((await as.owner('GET', `/api/reports/${notMine.report_id}`)).status, 404);
   });
 
+  test('forensic checks are served to dq:read roles only', async () => {
+    const res = await as.finops('GET', '/api/data-quality/forensics');
+    assert.equal(res.status, 200);
+    assert.deepEqual(res.body.checks.map((c) => c.check_code), [
+      'SNAPSHOT_INDEPENDENCE', 'REPORT_IDENTITY_SIGNAL', 'OWNER_ASSIGNMENT', 'UNKNOWN_STATUS', 'ANOMALY_OVERLAP',
+    ]);
+    assert.equal((await as.owner('GET', '/api/data-quality/forensics')).status, 403);
+  });
+
+  test('cost summary includes unit cost at each Snowflake edition price', async () => {
+    const { body } = await as.finops('GET', '/api/costs/summary');
+    assert.deepEqual(body.priceSensitivity.map((r) => [r.edition, r.credit_price_usd]), [
+      ['Standard', 2], ['Enterprise', 3], ['Business Critical', 4],
+    ]);
+    const enterprise = body.priceSensitivity.find((r) => r.edition === 'Enterprise');
+    assert.ok(Math.abs(enterprise.snowflake_cost_per_view_usd - body.portfolio.snowflake_cost_per_view_usd) < 1e-9);
+  });
+
   test('report filters', async () => {
     const orphaned = await as.admin('GET', '/api/reports?orphaned=true&pageSize=100');
     assert.equal(orphaned.body.total, 14);

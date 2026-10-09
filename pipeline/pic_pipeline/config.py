@@ -36,11 +36,41 @@ class Thresholds:
 
 
 THRESHOLDS = Thresholds()
-CREDIT_PRICE_USD = _float("CREDIT_PRICE_USD", 3.00)
+CREDIT_PRICE_USD = _float("CREDIT_PRICE_USD", 3.00)  # see SNOWFLAKE_EDITION_PRICES below
 
-# The CSV has no timestamp. Rows are 20 complete passes over the same 100 reports,
-# so each pass is treated as one 30-day period starting at this month.
-FIRST_PERIOD = "2025-01-01"
+# The CSV has no timestamp. Rows are 20 complete passes over the same 100 reports; their 30-day
+# metrics show no lag-1 autocorrelation (see forensics), i.e. the passes are consecutive,
+# non-overlapping 30-day periods. The calendar anchor is the last complete month before the data
+# was received (file delivered 2026-10-09 → September 2026); override with DATA_AS_OF_MONTH.
+DATA_AS_OF_MONTH = os.getenv("DATA_AS_OF_MONTH", "2026-09")
+SNAPSHOT_COUNT = 20
+
+
+def first_period(as_of: str = DATA_AS_OF_MONTH, snapshots: int = SNAPSHOT_COUNT) -> str:
+    """First month of the series so that snapshot `snapshots` falls on `as_of`."""
+    import pandas as pd
+
+    return str((pd.Period(as_of, freq="M") - (snapshots - 1)).start_time.date())
+
+
+FIRST_PERIOD = first_period()
+
+# Snowflake price per credit: on-demand list price for Enterprise edition on AWS US East
+# (Standard $2.00 · Enterprise $3.00 · Business Critical $4.00). Configurable.
+SNOWFLAKE_EDITION_PRICES = {"Standard": 2.00, "Enterprise": 3.00, "Business Critical": 4.00}
+
+
+@dataclass(frozen=True)
+class SimulationKnobs:
+    """Parameters for things the CSV carries no evidence of. Defaults are 0 so the simulated
+    ACCOUNT_USAGE layer invents no spend; tests switch them on to prove the SQL handles them."""
+
+    idle_ratio: float = _float("SIM_IDLE_RATIO", 0.0)  # warehouse idle as a share of busy credits
+    untagged_share: float = _float("SIM_UNTAGGED_SHARE", 0.0)  # ad-hoc untagged credits vs report credits
+    exec_jitter: float = _float("SIM_EXEC_JITTER", 0.0)  # lognormal sigma on execution time vs credits
+
+
+SIM = SimulationKnobs()
 
 
 def dsn(test: bool = False) -> str:

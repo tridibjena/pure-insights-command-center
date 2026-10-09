@@ -3,6 +3,7 @@
 import numpy as np
 import pytest
 
+from pic_pipeline.config import SimulationKnobs
 from pic_pipeline.simulate_account_usage import TAG_PREFIX, simulate
 
 
@@ -53,3 +54,24 @@ def test_deterministic(assessment):
     a = simulate(obs)["account_usage.query_history"]
     b = simulate(obs)["account_usage.query_history"]
     assert a["query_id"].equals(b["query_id"]) and a["execution_time"].equals(b["execution_time"])
+
+
+def test_default_simulation_invents_no_spend(tables):
+    """The CSV has no evidence of idle or untagged usage, so by default none is simulated."""
+    qa = tables["account_usage.query_attribution_history"]
+    m = tables["account_usage.warehouse_metering_history"]
+    assert qa["query_tag"].notna().all()
+    assert np.allclose(m["credits_used_compute"], m["credits_attributed_compute_queries"])
+
+
+def test_knobs_switch_on_idle_untagged_and_jitter(assessment):
+    obs = assessment.observations[
+        ["source_row_number", "report_id", "period_month", "refresh_status", "query_count_last_30d", "credits_raw"]
+    ].head(300)
+    t = simulate(obs, knobs=SimulationKnobs(idle_ratio=0.1, untagged_share=0.03, exec_jitter=0.3))
+    qa = t["account_usage.query_attribution_history"]
+    m = t["account_usage.warehouse_metering_history"]
+    assert qa["query_tag"].isna().sum() == 600
+    assert m["credits_used_compute"].sum() == pytest.approx(
+        m["credits_attributed_compute_queries"].sum() * 1.1, rel=1e-6
+    )

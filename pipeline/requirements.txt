@@ -5,3 +5,6 @@ python-dotenv>=1.0
 pytest>=8.0
 ruff>=0.6
 playwright>=1.45
+sqlglot>=25
+fakesnow>=0.11
+snowflake-connector-python>=3.12

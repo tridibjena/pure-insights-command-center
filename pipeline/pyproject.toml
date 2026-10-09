@@ -16,6 +16,7 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM"]
 "pic_pipeline/dq_report.py" = ["E501"]
 "pic_pipeline/findings.py" = ["E501"]
 "pic_pipeline/export_snowflake_csv.py" = ["E501"]
+"pic_pipeline/forensics.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

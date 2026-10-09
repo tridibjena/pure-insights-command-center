@@ -15,8 +15,8 @@ def test_structure_is_100_reports_by_20_snapshots(assessment):
     assert obs.groupby("report_id").size().eq(20).all()
     # Row i is the (i // 100 + 1)-th snapshot — the order assumption holds for every row
     assert (obs["snapshot_seq"] == (obs["source_row_number"] - 1) // 100 + 1).all()
-    assert str(obs["period_month"].min()) == "2025-01-01"
-    assert str(obs["period_month"].max()) == "2026-08-01"
+    assert str(obs["period_month"].min()) == "2025-02-01"
+    assert str(obs["period_month"].max()) == "2026-09-01"
 
 
 def test_orphaned_owner_markers(assessment):

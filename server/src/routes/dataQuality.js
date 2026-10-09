@@ -34,6 +34,14 @@ export function dataQualityRouter({ pool, config }) {
     res.json({ rules: rows });
   });
 
+  // Statistical checks behind the dataset's structural findings (written by the pipeline's forensics stage)
+  router.get('/forensics', async (_req, res) => {
+    const { rows } = await pool.query(
+      'SELECT check_code, ordinal, title, question, method, result, conclusion, treatment FROM app.dq_forensics ORDER BY ordinal',
+    );
+    res.json({ checks: rows });
+  });
+
   router.get('/issues', async (req, res) => {
     const q = parse(
       z.object({

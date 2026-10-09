@@ -16,6 +16,7 @@ export function DataQuality() {
   const [rule, setRule] = useState('DQ_NEGATIVE_CREDITS');
   const [page, setPage] = useState(1);
   const { data: issues, loading } = useApi(`/api/data-quality/issues${qs({ rule, page, pageSize: 12 })}`);
+  const { data: forensics } = useApi('/api/data-quality/forensics');
   useRouteLoaded(Boolean(s && rules), '/data-quality');
   if (error) return <ErrorState error={error} />;
   if (!s || !rules) return <Loading what="data quality" />;
@@ -59,6 +60,30 @@ export function DataQuality() {
           </table>
         </div>
       </Panel>
+      {forensics?.checks?.length > 0 && (
+        <Panel
+          title="Forensic checks"
+          sub="Statistical tests behind the dataset's structure — each answers a question the data raises and sets how the pipeline treats it"
+        >
+          <div className="stack" style={{ gap: 22 }}>
+            {forensics.checks.map((c) => (
+              <div key={c.check_code} className="forensic">
+                <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <h3>{c.ordinal} · {c.title}</h3>
+                  <span className="pill">{c.check_code}</span>
+                </div>
+                <p className="muted" style={{ margin: '6px 0 8px' }}>{c.question}</p>
+                <div className="forensic-grid">
+                  <span className="label">Method</span><span>{c.method}</span>
+                  <span className="label">Result</span><span className="mono" style={{ fontSize: 12 }}>{c.result}</span>
+                  <span className="label">Conclusion</span><span style={{ color: 'var(--text)' }}>{c.conclusion}</span>
+                  <span className="label">Treatment</span><span>{c.treatment}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      )}
       {selected && (
         <Panel title={selected.title} sub={<><span className="mono">{selected.detection}</span> → {selected.remediation}</>} flush>
           <div className={`table-wrap ${loading ? 'stale' : ''}`}>

@@ -51,11 +51,12 @@ The 2,000 CSV observations stream through the live ingest → alert → WebSocke
 | Command | What it does |
 |---|---|
 | `npm run setup` | Starts Postgres, creates the Python venv, runs the full pipeline, seeds users (idempotent; safe to re-run) |
-| `npm run pipeline` | migrate → ingest → clean → simulate ACCOUNT_USAGE → cost SQL suite → verify → export → DQ report → findings |
+| `npm run pipeline` | migrate → ingest → clean → forensic checks → simulate ACCOUNT_USAGE → cost SQL suite → verify → export → Snowflake-dialect check (emulator) → DQ report → findings |
 | `npm run dev` | API (`node --watch`) and Vite dev server |
 | `npm start` | Production build: Express serves the built React app on :4000 |
-| `npm test` | pytest (40) + server `node:test` (31) + client Vitest (14) |
+| `npm test` | pytest (52) + server `node:test` (34) + client Vitest (14) |
 | `npm run verify` | Rebuilds the `cost.*` views from `sql/snowflake/01–09` and asserts all reconciliation checks pass |
+| `npm run verify:snowflake` | Parses the suite as Snowflake SQL and executes it on the Snowflake emulator; checks must match PostgreSQL |
 | `npm run lint` | ruff + eslint (server and client) |
 | `npm run screenshots` | Re-captures the README screenshots from the running app (Playwright; first run `pipeline/.venv/bin/playwright install chromium`) |
 
@@ -66,7 +67,7 @@ The 2,000 CSV observations stream through the live ingest → alert → WebSocke
 All figures below come from programmatic checks: [`quality_rules.py`](pipeline/pic_pipeline/quality_rules.py)
 and the tests in [`pipeline/tests/`](pipeline/tests).
 
-* **Shape.** 2,000 rows, but only **100 distinct `report_id`s**, each appearing exactly 20 times in identical order. There is no timestamp. The rows are modelled as **100 reports × 20 monthly snapshots** (2025-01 → 2026-08). This is the one modelling assumption, and it is documented.
+* **Shape.** 2,000 rows, but only **100 distinct `report_id`s**, each appearing exactly 20 times in identical order. There is no timestamp. The rows are modelled as **100 reports × 20 monthly snapshots**. This is tested, not assumed: consecutive passes have lag-1 autocorrelation ≈ 0 (overlapping daily windows would give ≈ +0.97), so each pass is its own 30-day period. The calendar anchor is the last complete month before the data was received (CSV delivered 2026-10-09), giving **Feb 2025 → Sep 2026**.
 * **Orphaned owners: 245 rows.** `nan` × 128 and `ORPHANED_REPORT` × 117. These are nulled and flagged. **14 reports** are orphaned right now (latest snapshot). Admins can reassign owners, and every reassignment is audited.
 * **Negative Snowflake credits: 24 rows**, from −13.6 to −0.8 (total −161.04). These are **quarantined**: excluded from attribution, not abs()'d and not zeroed. Clean total: **1,206,352.48** credits.
 * **Load latency up to 55 s.** The alert threshold is **> 15 s**, from the brief. **55 s is the dataset's extreme, not a threshold**: 6 readings sit exactly at 55.0 s. Spikes are kept unchanged and alerted on. 7 readings of exactly 15.0 s correctly do *not* alert. 1,490 rows (74.5 %) breach.
@@ -75,9 +76,11 @@ and the tests in [`pipeline/tests/`](pipeline/tests).
   * 4 zero-view months still carry cost.
   * 93 rows report more peak concurrent users than monthly views, which is impossible.
   * 135 rows exceed the robust Q3 + 3×IQR cost-per-view fence ($2.06/view).
-* **Not in the brief, but handled.**
-  * `UNKNOWN` refresh status (100 rows) is treated as a telemetry gap, not a failure.
-  * Ownership churns: reports average 10 different owners over 20 months.
+* **Not in the brief: investigated with statistical tests** (see [forensic checks](docs/DATA_QUALITY.md#7--forensic-checks), also on the Data Quality page).
+  * **`UNKNOWN` refresh status (100 rows)** is missing telemetry, not a hidden failure. It is no more likely after a failed month (4.8 % vs 5.0 % base) and has the same latency, credits and views as other rows, so it raises a telemetry-gap warning rather than counting as a failure.
+  * **Ownership churn** (about 10 owners per report over 20 months) is random reassignment. A report keeps last month's owner 6.5 % of the time, against 7.2 % for pure chance among 14 owners, and orphaning doesn't persist either.
+  * **Anomaly overlaps** are chance or arithmetic. Negative credits ∧ orphaned: 3 observed vs 2.94 expected. Zero-view months carry credits because 98.8 % of rows do. The only significant pairs follow from very low view counts.
+  * **Report identity explains none of the variance** (permutation ANOVA p = 0.14–0.88). Portfolio findings are robust, but per-report rankings are illustrative in this dataset.
 
 ---
 
@@ -163,7 +166,7 @@ RPT_265 ties several anomalies together:
 Snowflake credits attributed per report from `QUERY_ATTRIBUTION_HISTORY` via `QUERY_TAG`, using the same SQL as
 [`sql/snowflake/`](sql/snowflake/README.md).
 
-* **Unit cost:** at $3/credit, a view costs **$2.74 fully loaded** ($2.43 Snowflake + $0.31 AWS).
+* **Unit cost:** at $3/credit (Snowflake Enterprise, on-demand, AWS US East), a view costs **$2.74 fully loaded** ($2.43 Snowflake + $0.31 AWS). The edition table shows Standard ($1.93) and Business Critical ($3.55) as well.
 * **Reconciliation:** all six checks **PASS**. Method A equals the clean source credits to the cent, and the quarantined amount equals the −161.04 of negatives.
 * **Ranking:** the top 15 reports by cost per view; ★ marks decommission candidates.
 * **AWS scatter:** shows hosting cost does not follow usage, with flagged report-months in copper.
@@ -211,16 +214,19 @@ The full write-up, generated from live queries, is in [docs/BUSINESS_FINDINGS.md
 1. **The latency SLO is broken across the whole platform.** 74.5 % of report-months exceed 15 s, with a median of 27.8 s. Fixing a handful of slow dashboards will not help, so the fix belongs in shared layers: warehouse sizing, caching, payload size.
 2. **28.2 % of refreshes fail or time out.** Latency is the same whether a refresh failed or succeeded, so the two problems have independent causes.
 3. **Unowned spend is $480.9K**, the largest "owner" in the chargeback. Mandatory ownership at publish time would close it.
-4. **AWS hosting cost is decoupled from usage** (r = −0.027). This points to rightsizing; there are 10 decommission candidates.
-5. **Snowflake dominates unit cost.** At $3/credit it is $2.43 of the $2.74 per view.
+4. **AWS hosting cost is decoupled from usage** (r = −0.027), which points to rightsizing. The decommission ranking demonstrates the method; in this dataset report identity carries no statistical signal, so it should be re-run on production data.
+5. **Snowflake dominates unit cost.** At the Enterprise price of $3/credit it is $2.43 of the $2.74 per view ($1.62 to $3.25 across editions).
+6. **Failed refreshes sit behind $1.14M of spend:** 564 report-months whose refresh failed or timed out carried 337,131 credits ($1.01M) plus $129K of AWS hosting.
 
 ## Assumptions
 
-* The 20 identical passes over the 100 reports are monthly snapshots. The CSV has no timestamp.
-* `CREDIT_PRICE_USD = 3.00`. This is not in the data and is configurable.
-* The Snowflake `ACCOUNT_USAGE` logs are **simulated** from the CSV, deterministically, and reconcile to it exactly. Figures that exist only in the simulation are labelled. These are warehouse idle time, untagged ad-hoc spend, and failed-query spend.
-* The 30 s and 45 s severity tiers are configurable display bands. Only the 15 s threshold comes from the brief.
-* The SQL suite is portable and has been verified on PostgreSQL. The Snowflake bootstrap script is provided but was not executed, because no Snowflake account was available.
+Each former assumption is now either tested against the data or tied to an external source:
+
+* **Timeline.** Monthly cadence is *tested* (lag-1 autocorrelation ≈ 0). Only the calendar anchor is a convention: the last complete month before the data was received, Sep 2026. It's configurable via `DATA_AS_OF_MONTH`.
+* **Credit price.** `CREDIT_PRICE_USD = 3.00` is Snowflake's on-demand list price for **Enterprise edition on AWS US East**; Standard is $2 and Business Critical $4. The brief puts the portal on AWS, and Enterprise is the edition that provides the multi-cluster warehouses a portal of this concurrency needs. The SQL suite reports unit cost at all three prices (`cost.v_unit_cost_price_sensitivity`).
+* **Simulated ACCOUNT_USAGE logs.** The brief asks for simulated logs. They are derived from the CSV and **add no spend of their own**: the CSV has no evidence of warehouse idle time or untagged work, so none is invented, and failed-refresh spend is reported from the CSV itself. The SQL still measures idle and untagged spend; the tests switch both on to prove it.
+* **Snowflake execution.** Every statement in `sql/snowflake/00–09` parses as Snowflake SQL, and the whole suite **executes in Snowflake dialect** on the fakesnow emulator with all 6 reconciliation checks passing and figures identical to PostgreSQL (`python -m pic_pipeline.cli snowflake`, also in the test suite). The same script runs against a real account with `python -m pic_pipeline.cli snowflake-live` once `SNOWFLAKE_ACCOUNT/USER/PASSWORD` are set. That last step is the only one not yet run.
+* **Severity tiers.** The 30 s and 45 s tiers are configurable display bands. Only the 15 s threshold comes from the brief.
 
 ## Repository layout
 

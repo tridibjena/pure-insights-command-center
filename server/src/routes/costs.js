@@ -14,7 +14,7 @@ export function costsRouter({ pool }) {
   const router = Router();
 
   router.get('/summary', async (_req, res) => {
-    const [portfolio, reconciliation, quarantine, idle, discrepancy, correlation, orphans, pricing] = await Promise.all([
+    const [portfolio, reconciliation, quarantine, idle, discrepancy, correlation, orphans, pricing, sensitivity] = await Promise.all([
       pool.query('SELECT * FROM cost.v_unit_cost_portfolio'),
       pool.query('SELECT * FROM cost.v_reconciliation_checks ORDER BY check_no'),
       pool.query('SELECT * FROM cost.v_quarantine_summary ORDER BY attribution_status'),
@@ -23,6 +23,7 @@ export function costsRouter({ pool }) {
       pool.query('SELECT * FROM cost.v_aws_usage_correlation'),
       pool.query('SELECT * FROM cost.v_orphaned_cost_summary'),
       pool.query('SELECT currency, credit_price_usd FROM portal.credit_pricing'),
+      pool.query('SELECT * FROM cost.v_unit_cost_price_sensitivity ORDER BY ordinal'),
     ]);
     res.json({
       pricing: pricing.rows[0],
@@ -33,6 +34,7 @@ export function costsRouter({ pool }) {
       discrepancy: discrepancy.rows[0],
       correlation: correlation.rows,
       orphans: orphans.rows[0],
+      priceSensitivity: sensitivity.rows,
     });
   });
 

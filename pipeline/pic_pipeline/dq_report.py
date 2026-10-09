@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 import pandas as pd
 
-from .config import DOCS_DIR, THRESHOLDS
+from .config import DATA_AS_OF_MONTH, DOCS_DIR, FIRST_PERIOD, THRESHOLDS
 from .db import connect, query_df
 
 
@@ -87,11 +87,19 @@ def build(test: bool = False) -> str:
         zero_rows = q("""SELECT source_row_number AS "CSV row", report_id AS "Report", monthly_active_views AS "Views",
                                 aws_hosting_cost_usd AS "AWS $", credits_raw AS "Credits"
                          FROM app.report_observations WHERE is_zero_view_cost ORDER BY source_row_number""")
+        forensic = q(
+            "SELECT ordinal, title, question, method, result, conclusion, treatment FROM app.dq_forensics ORDER BY ordinal"
+        )
         churn = q(
             "SELECT COUNT(*) AS n, ROUND(AVG(distinct_owner_count), 1) AS avg_owners FROM app.reports "
             "WHERE owner_change_count > 0"
         ).iloc[0]
 
+    forensic_md = "\n\n".join(
+        f"### {int(r.ordinal)} · {r.title}\n\n* **Question.** {r.question}\n* **Method.** {r.method}\n"
+        f"* **Result.** {r.result}\n* **Conclusion.** {r.conclusion}\n* **Treatment.** {r.treatment}"
+        for r in forensic.itertuples()
+    )
     hist_line = " · ".join(f"{int(r.lo)}–{int(r.lo) + 5}s: {int(r.n)}" for r in hist.itertuples())
     return f"""# Data Quality Report — Pure Insights Command Center
 
@@ -103,13 +111,15 @@ Source: `data/raw/Case_Study_3_Pure_Insights_Monitoring.csv` — **{int(totals.r
 across **{int(totals.snapshots)} snapshots**. No row is dropped: defects are nulled, quarantined or annotated, and the
 raw value is always kept.
 
-## How the data is structured (and the one modelling assumption)
+## How the data is structured
 
 The file has no timestamp. `report_id` takes only {int(totals.reports)} distinct values and each appears exactly
 {int(totals.snapshots)} times, in the same order on every pass. The pipeline therefore treats the *n*-th occurrence of a
 report as its *n*-th **snapshot**. The metrics are monthly/30-day aggregates (`monthly_active_views`,
-`query_count_last_30d`), so each snapshot is mapped to a 30-day billing period, snapshot 1 = 2025-01 to snapshot 20 = 2026-08.
-`report_name` is constant per report (verified); `owner_email` is not (see *Ownership churn*).
+`query_count_last_30d`). Their lag-1 autocorrelation between consecutive passes is ≈ 0 (see forensic check 1), so the
+passes are consecutive, non-overlapping 30-day periods — monthly snapshots — not rolling daily windows. The calendar anchor
+is the last complete month before the data was received: snapshot 1 = {FIRST_PERIOD[:7]} to snapshot 20 = {DATA_AS_OF_MONTH}
+(configurable via `DATA_AS_OF_MONTH`). `report_name` is constant per report (verified); `owner_email` is not.
 
 ## Anomaly register
 
@@ -183,7 +193,15 @@ WARNING), not as a failure.
 ## 6 · Ownership churn
 
 {int(churn.n)} of {int(totals.reports)} reports change owner between snapshots (on average {churn.avg_owners} distinct owners
-each). The pipeline uses the owner in the latest snapshot as the *current* owner and keeps the full history for the drill-down.
+each). Forensic check 3 shows the churn is random reassignment with no month-to-month memory. The pipeline uses the owner in
+the latest snapshot as the *current* owner and keeps the full history for the drill-down.
+
+## 7 · Forensic checks
+
+Each structural observation about the dataset raises a question the data itself can answer. These checks are recomputed by
+`python -m pic_pipeline.cli forensics` and stored in `app.dq_forensics` (shown on the Data Quality page).
+
+{forensic_md}
 """
 
 
