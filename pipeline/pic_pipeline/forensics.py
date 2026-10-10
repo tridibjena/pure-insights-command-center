@@ -57,14 +57,23 @@ def run_checks(obs: pd.DataFrame) -> list[dict]:
     obs = obs.sort_values(["report_id", "snapshot_seq"]).reset_index(drop=True)
     n = len(obs)
     checks: list[dict] = []
+    # Facts quoted in the questions/treatments below — computed, never typed in.
+    n_snapshots = int(obs["snapshot_seq"].max())
+    latest = obs[obs["snapshot_seq"] == n_snapshots]
+    owners_per_report = float(obs.groupby("report_id")["owner_email"].nunique().mean())
+    currently_orphaned = int(latest["is_orphaned"].sum())
+    unknown_rows = int(obs["is_status_unknown"].sum())
+    neg_orphan_rows = int((obs["is_negative_credits"] & obs["is_orphaned"]).sum())
+    zero_view = obs[obs["is_zero_view_cost"]]
+    zero_view_with_credits = int((zero_view["credits_raw"] > 0).sum())
 
-    # 1 · Are the 20 passes overlapping rolling windows or consecutive periods?
+    # 1 · Are the repeated passes overlapping rolling windows or consecutive periods?
     lags = {c: round(_lag1(obs, c), 3) for c in METRICS_30D}
     checks.append(
         {
             "check_code": "SNAPSHOT_INDEPENDENCE",
             "title": "Snapshots are consecutive, non-overlapping 30-day periods",
-            "question": "The CSV has no timestamp and repeats each report 20 times. Are the passes daily rolling 30-day windows (heavily overlapping) or separate periods?",
+            "question": f"The CSV has no timestamp and repeats each report {n_snapshots} times. Are the passes daily rolling 30-day windows (heavily overlapping) or separate periods?",
             "method": "Lag-1 autocorrelation of each 30-day metric between consecutive passes of the same report. Rolling daily windows share 29/30 of their data, so they would correlate near +0.97.",
             "result": "Mean lag-1 autocorrelation: " + ", ".join(f"{k} {v:+.3f}" for k, v in lags.items()),
             "conclusion": "No overlap between passes: each pass is an independent 30-day period, i.e. a monthly snapshot.",
@@ -117,11 +126,11 @@ def run_checks(obs: pd.DataFrame) -> list[dict]:
         {
             "check_code": "OWNER_ASSIGNMENT",
             "title": "Owners — and orphaning — are assigned independently each month",
-            "question": "Reports average ~10 different owners over 20 months. Are these hand-offs (sticky ownership) or random assignment? Does orphaning persist?",
+            "question": f"Reports average {owners_per_report:.1f} different owners over {n_snapshots} months. Are these hand-offs (sticky ownership) or random assignment? Does orphaning persist?",
             "method": "Probability that a report keeps the previous month's owner, compared with the probability two independent draws from the owner pool coincide; same comparison for orphan status.",
             "result": f"P(same owner as previous month) = {p_same:.3f} vs {p_random:.3f} for independent draws ({len(share)} owners, each {share.min():.1%}–{share.max():.1%}); P(orphaned | orphaned previous month) = {p_orph_after_orph:.3f} vs base rate {base_orph:.3f}.",
             "conclusion": "Ownership and orphaning carry no month-to-month memory: the churn is random reassignment in the source data, not a pattern of hand-offs.",
-            "treatment": "The latest snapshot is the system of record for the current owner (14 reports currently orphaned); the full owner history is kept for the drill-down and every orphaned report-month counts towards unowned spend.",
+            "treatment": f"The latest snapshot is the system of record for the current owner ({currently_orphaned} reports currently orphaned); the full owner history is kept for the drill-down and every orphaned report-month counts towards unowned spend.",
             "metrics": {
                 "p_same_owner": round(p_same, 4),
                 "p_independent": round(p_random, 4),
@@ -143,7 +152,7 @@ def run_checks(obs: pd.DataFrame) -> list[dict]:
         {
             "check_code": "UNKNOWN_STATUS",
             "title": "UNKNOWN refresh status is a telemetry gap, not a hidden failure",
-            "question": "100 rows report UNKNOWN. Do they behave like failures (e.g. follow failed refreshes, slower loads) or like missing telemetry?",
+            "question": f"{unknown_rows} rows report UNKNOWN. Do they behave like failures (e.g. follow failed refreshes, slower loads) or like missing telemetry?",
             "method": "Rate of UNKNOWN right after a FAILED/TIMED_OUT month vs its base rate; mean latency, credits and views for UNKNOWN vs other rows; spread across reports and snapshots.",
             "result": f"P(UNKNOWN | previous month failed) = {p_unk_after_fail:.3f} vs base {unk.mean():.3f}; UNKNOWN vs others — "
             + ", ".join(f"{k} {v[0]} vs {v[1]}" for k, v in means.items())
@@ -194,7 +203,7 @@ def run_checks(obs: pd.DataFrame) -> list[dict]:
         {
             "check_code": "ANOMALY_OVERLAP",
             "title": "Anomalies were injected independently; overlaps are chance or arithmetic",
-            "question": "3 negative-credit rows are also orphaned and all 4 zero-view months carry Snowflake credits. Are the defects linked?",
+            "question": f"{neg_orphan_rows} negative-credit rows are also orphaned and {zero_view_with_credits} of {len(zero_view)} zero-view months carry Snowflake credits. Are the defects linked?",
             "method": f"For each of the {m} pairs of anomaly flags, observed overlap vs the overlap expected if independent, with a hypergeometric p-value (Bonferroni threshold 0.05/{m}).",
             "result": f"negative credits ∧ orphaned: {neg_orph['observed']} observed vs {neg_orph['expected']} expected (p={neg_orph['p']:.2f}); "
             f"{credit_share:.1%} of all rows carry credits and credits do not track views (r={corr_views_credits:+.3f}); "
@@ -202,7 +211,12 @@ def run_checks(obs: pd.DataFrame) -> list[dict]:
             + (", ".join(f"{p['a']} ∧ {p['b']} ({p['observed']} vs {p['expected']})" for p in mechanical) or "none")
             + ".",
             "conclusion": "The negative-credit/orphan overlap is exactly what chance predicts, and zero-view months carry credits because almost every row does. The only significant pairs are arithmetic: zero views make any peak exceed views, and very low views drive both the impossible-usage and the cost-per-view outlier flags.",
-            "treatment": "Each defect keeps its own rule and register entry; overlapping rows are handled by every applicable rule (e.g. RPT_211 #14 is quarantined for credits and nulled for ownership).",
+            "treatment": "Each defect keeps its own rule and register entry; overlapping rows are handled by every applicable rule"
+            + (
+                f" (e.g. {ex.report_id} #{ex.snapshot_seq} is quarantined for credits and nulled for ownership)."
+                if (ex := next(obs[obs["is_negative_credits"] & obs["is_orphaned"]].itertuples(), None))
+                else "."
+            ),
             "metrics": {
                 "pairs": pairs_out,
                 "share_rows_with_credits": round(credit_share, 4),

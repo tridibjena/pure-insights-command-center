@@ -63,6 +63,21 @@ describe('routing and RBAC in the UI', () => {
   });
 });
 
+describe('users without permissions', () => {
+  beforeEach(() => vi.stubGlobal('WebSocket', FakeSocket));
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('land on a no-access page instead of a 404', async () => {
+    vi.stubGlobal('fetch', mockApi({ ...owner, role: 'NONE', ownerScoped: false, permissions: [] }));
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <AuthProvider><App /></AuthProvider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText('Your account has no permissions yet')).toBeInTheDocument();
+  });
+});
+
 describe('severity is never colour-only', () => {
   it('renders an icon and a text label', () => {
     const { container } = render(<SeverityBadge severity="CRITICAL" />);

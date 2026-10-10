@@ -26,6 +26,21 @@ export function Forbidden({ permission }) {
   );
 }
 
+export function NoAccess() {
+  const { user } = useAuth();
+  return (
+    <div className="card" style={{ maxWidth: 620, margin: '48px 0' }}>
+      <div className="stack tight" style={{ gap: 14 }}>
+        <span className="label">No access</span>
+        <h1 style={{ fontSize: 30 }}>Your account has no permissions yet</h1>
+        <p className="muted" style={{ margin: 0, lineHeight: 1.6 }}>
+          {user?.email} is signed in, but its role grants no pages. Ask an administrator to assign a role.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function NotFound() {
   return (
     <div className="card" style={{ maxWidth: 620, margin: '48px 0' }}>

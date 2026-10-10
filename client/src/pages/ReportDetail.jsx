@@ -34,19 +34,19 @@ export function ReportDetail() {
       >
         <span className="mono">{report.report_id}</span> · owner{' '}
         {report.owner_email ? <span className="mono">{report.owner_email}</span> : <span className="accent">none (orphaned)</span>}
-        {report.has_owner_override && ' (reassigned by an administrator)'} · {report.distinct_owner_count} different owners across 20 snapshots
+        {report.has_owner_override && ' (reassigned by an administrator)'} · {report.distinct_owner_count} different owners across {history.length} snapshots
       </PageHead>
 
       <div className="kpis">
         <Kpi label="Load latency · latest" value={fmtNum(latest.avg_load_time_sec)} unit="s"><SeverityBadge severity={latest.latency_band} /></Kpi>
-        <Kpi label="Refresh · latest" value={<RefreshStatus status={latest.refresh_status} />} foot={`${history.filter((h) => h.refresh_status === 'FAILED' || h.refresh_status === 'TIMED_OUT').length} failed refreshes in 20 snapshots`} />
-        <Kpi label="Snapshots above 15 s" value={breaches} unit="/ 20" foot={`Worst ${fmtSec(Math.max(...history.map((h) => h.avg_load_time_sec ?? 0)))}`} />
+        <Kpi label="Refresh · latest" value={<RefreshStatus status={latest.refresh_status} />} foot={`${history.filter((h) => h.refresh_status === 'FAILED' || h.refresh_status === 'TIMED_OUT').length} failed refreshes in ${history.length} snapshots`} />
+        <Kpi label="Snapshots above 15 s" value={breaches} unit={`/ ${history.length}`} foot={`Worst ${fmtSec(Math.max(...history.map((h) => h.avg_load_time_sec ?? 0)))}`} />
         <Kpi label="Active views · latest" value={fmtInt(latest.monthly_active_views)} foot={`Peak ${latest.concurrent_user_peak} concurrent users`} />
         {cost && <Kpi label="Fully loaded cost / view" value={fmtUsd(cost.fully_loaded_cost_per_view_usd)} foot={`Snowflake ${fmtUsd(cost.snowflake_cost_per_view_usd)} + AWS ${fmtUsd(cost.aws_cost_per_view_usd)}`} flag />}
       </div>
 
       <Panel
-        title="Load latency across 20 snapshots"
+        title={`Load latency across ${history.length} snapshots`}
         sub="Average dashboard load time per monthly snapshot; the line marks the 15 s alert threshold"
         actions={<Segmented label="View" value={view} onChange={setView} options={[{ value: 'chart', label: 'Chart' }, { value: 'table', label: 'Table' }]} />}
       >

@@ -31,9 +31,11 @@ export function telemetryRouter({ pool, config, ingest, replayer }) {
   });
 
   // Real-user monitoring beacon from the React app: dashboard route load time.
+  // Per signed-in user (not per IP): one person can't flood the channel from several tabs or proxies.
   const rumLimiter = rateLimit({
     windowMs: 60_000,
-    limit: 60,
+    limit: 20,
+    keyGenerator: (req) => `rum:${req.user.email}`,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
     handler: () => {

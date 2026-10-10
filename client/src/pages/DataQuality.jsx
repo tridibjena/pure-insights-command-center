@@ -31,7 +31,7 @@ export function DataQuality() {
       <div className="kpis">
         <Kpi label="Rows landed" value={fmtInt(s.raw_rows)} foot={`${s.reports} reports × ${s.snapshots} snapshots — no timestamp in source`} />
         <Kpi label="Rows with a defect" value={fmtInt(s.rows_with_defects)} foot={`${fmtInt(s.issues)} register entries across ${rules.rules.length} rules`} />
-        <Kpi label="Credits after quarantine" value={fmtInt(s.credits_clean_total)} foot={`raw ${fmtMoneyless(s.credits_raw_total)} → clean ${fmtMoneyless(s.credits_clean_total)} (24 negatives removed)`} />
+        <Kpi label="Credits after quarantine" value={fmtInt(s.credits_clean_total)} foot={`raw ${fmtMoneyless(s.credits_raw_total)} → clean ${fmtMoneyless(s.credits_clean_total)} (${fmtInt(s.negative_credit_rows)} negatives removed)`} />
         <Kpi label="Worst load latency" value={fmtNum(s.max_latency_sec)} unit="s" flag foot={`${s.rows_at_max_latency} rows at the ceiling · kept, never capped`} />
       </div>
       <div className="note">

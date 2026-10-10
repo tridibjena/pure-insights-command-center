@@ -19,10 +19,17 @@ export const reportEventSchema = z
     message: 'avgLoadTimeSec or refreshStatus is required',
   });
 
+// Page-load beacons may only name the Command Center's own route templates, so a client cannot
+// mint arbitrary RUM_SLOW_LOAD incidents (alerts de-duplicate per route: at most one per page).
+export const RUM_ROUTES = Object.freeze([
+  '/health', '/alerts', '/reports', '/reports/:id', '/orphans', '/costs', '/data-quality', '/admin',
+]);
+export const RUM_MAX_LOAD_SEC = 600;
+
 export const clientLoadSchema = z.object({
   type: z.literal('client.load'),
-  route: z.string().min(1).max(200),
-  loadTimeSec: z.number().finite().nonnegative(),
+  route: z.enum(RUM_ROUTES),
+  loadTimeSec: z.number().finite().nonnegative().max(RUM_MAX_LOAD_SEC),
 });
 
 export function createTelemetryIngest({ pool, hub, thresholds, logger }) {

@@ -1,5 +1,5 @@
-// Shared chart theming so every chart reads as one system (element style from
-// agent-auto-optimizer: hairline grid, mono ticks, accent for the subject).
+// Shared chart theming so every chart reads as one system: hairline grid, mono ticks,
+// one accent for the subject.
 
 export const C = {
   text: '#f5f5f5',

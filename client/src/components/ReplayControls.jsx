@@ -15,12 +15,16 @@ export function ReplayControls() {
   const { can } = useAuth();
   const { replay, setReplay } = useAlertStream();
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
   const allowed = can('replay:control');
 
   async function call(path, body) {
     setBusy(true);
+    setError(null);
     try {
       setReplay(await api(`/api/telemetry/replay/${path}`, { method: 'POST', body }));
+    } catch (err) {
+      setError(`Replay ${path} failed: ${err.message}`);
     } finally {
       setBusy(false);
     }
@@ -32,12 +36,13 @@ export function ReplayControls() {
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <span className={`pill ${replay?.running ? 'live ok' : ''}`}>{replay?.running ? 'Streaming' : 'Paused'}</span>
         <span className="muted num" style={{ fontSize: 12 }}>
-          snapshot {replay?.currentSnapshot ?? '—'} / {replay?.snapshotsTotal ?? 20} · {replay?.eventsSent ?? 0} events · {pct}%
+          snapshot {replay?.currentSnapshot ?? '—'} / {replay?.snapshotsTotal ?? '—'} · {replay?.eventsSent ?? 0} events · {pct}%
         </span>
       </div>
       <div className="meter" role="progressbar" aria-label="Replay progress" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
         <span style={{ width: `${pct}%` }} />
       </div>
+      {error && <div className="note" role="alert">{error}</div>}
       {allowed && (
         <div className="row">
           {replay?.running ? (

@@ -18,10 +18,12 @@ const listQuery = z.object({
 export function alertsRouter({ pool, hub }) {
   const router = Router();
 
-  function scopeSql(user, params) {
+  // Row scope for REPORT_OWNER. `column` names the alert's report_id column (qualified when the query
+  // joins); the subquery's own report_id is never rewritten, so the filter can't collapse to TRUE.
+  function scopeSql(user, params, column = 'report_id') {
     if (!user.ownerScoped) return 'TRUE';
     params.push(user.owner_email);
-    return `report_id IN (SELECT report_id FROM app.v_report_current WHERE owner_email = $${params.length})`;
+    return `${column} IN (SELECT v.report_id FROM app.v_report_current v WHERE v.owner_email = $${params.length})`;
   }
 
   async function loadScoped(user, id) {
@@ -60,20 +62,20 @@ export function alertsRouter({ pool, hub }) {
 
   router.get('/stats', async (req, res) => {
     const params = [];
-    const scope = scopeSql(req.user, params);
     const { rows } = await pool.query(
-      `SELECT status, severity, rule_code, count(*)::int AS n FROM app.alerts WHERE ${scope}
+      `SELECT status, severity, rule_code, count(*)::int AS n FROM app.alerts WHERE ${scopeSql(req.user, params)}
         GROUP BY status, severity, rule_code`,
       params,
     );
+    const recentParams = [];
     const { rows: [recent] } = await pool.query(
       `SELECT count(*) FILTER (WHERE event_type = 'RAISED')::int AS raised,
               count(*) FILTER (WHERE event_type = 'ESCALATED')::int AS escalated,
               count(*) FILTER (WHERE event_type = 'RESOLVED')::int AS resolved,
               count(*) FILTER (WHERE event_type = 'REPEATED')::int AS deduplicated
          FROM app.alert_events e JOIN app.alerts a USING (alert_id)
-        WHERE e.at > now() - interval '1 hour' AND ${scope.replaceAll('report_id', 'a.report_id')}`,
-      params,
+        WHERE e.at > now() - interval '1 hour' AND ${scopeSql(req.user, recentParams, 'a.report_id')}`,
+      recentParams,
     );
     res.json({ breakdown: rows, lastHour: recent });
   });

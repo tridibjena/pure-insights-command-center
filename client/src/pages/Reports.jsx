@@ -24,7 +24,7 @@ export function Reports() {
       <PageHead title="Reports">
         {user.ownerScoped
           ? `Reports currently owned by ${user.ownerEmail}. Your access is row-scoped: other reports are not visible.`
-          : 'All 100 portal reports with their latest snapshot, 20-snapshot history counts and live alerts.'}
+          : `All ${data?.total ?? ''} portal reports with their latest snapshot, ${data?.reports[0]?.snapshots ?? ''}-snapshot history counts and live alerts.`}
       </PageHead>
       <div className="filters">
         <input className="input" placeholder="Search id or name…" value={f.search} onChange={(e) => set({ search: e.target.value })} aria-label="Search reports" style={{ width: 220 }} />
@@ -77,7 +77,7 @@ export function Reports() {
                     <td><SeverityBadge severity={r.latency_band} /></td>
                     <td><RefreshStatus status={r.refresh_status} /></td>
                     <td className="num r">{fmtInt(r.monthly_active_views)}</td>
-                    <td className="num r">{r.breach_snapshots} / 20</td>
+                    <td className="num r">{r.breach_snapshots} / {r.snapshots}</td>
                     <td className="num r">{r.failure_snapshots}</td>
                     <td className="num r">{r.live_alerts ? <SeverityBadge severity={r.max_live_severity} label={String(r.live_alerts)} /> : <span className="dim">0</span>}</td>
                   </tr>

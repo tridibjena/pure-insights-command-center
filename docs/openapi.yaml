@@ -331,11 +331,11 @@ paths:
   /api/telemetry/rum:
     post:
       tags: [Telemetry]
-      summary: Real-user monitoring beacon — how long a Command Center page took to load
+      summary: Real-user monitoring beacon — how long a Command Center page took to load (20 per minute per user)
       x-permission: authenticated
       requestBody:
         required: true
-        content: { application/json: { schema: { type: object, required: [route, loadTimeSec], properties: { route: { type: string, example: /health }, loadTimeSec: { type: number, minimum: 0, example: 1.42 } } } } }
+        content: { application/json: { schema: { type: object, required: [route, loadTimeSec], properties: { route: { type: string, enum: [/health, /alerts, /reports, '/reports/:id', /orphans, /costs, /data-quality, /admin], description: One of the Command Center's own route templates }, loadTimeSec: { type: number, minimum: 0, maximum: 600, example: 1.42 } } } } }
       responses:
         '202': { description: Accepted (> 15 s raises RUM_SLOW_LOAD) }
         '429': { $ref: '#/components/responses/TooManyRequests' }

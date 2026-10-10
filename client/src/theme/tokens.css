@@ -6,8 +6,7 @@
    cards in two tones (charcoal for tables/charts, lighter "glass" grey for
    KPIs), rounded pill filter groups, gradient bars with a solid cap, and a
    glow callout. The accent is the Everpure brand orange (#ff7023, from the
-   everpuredata.com design tokens --ps-color-brand-500); the neutral text scale
-   follows the agent-auto-optimizer system. Severity colours are validated for CVD
+   everpuredata.com design tokens --ps-color-brand-500) on a neutral text scale. Severity colours are validated for CVD
    separation, normal-vision separation and >= 3:1 contrast on the card
    surface, and always travel with an icon and a text label.
    ─────────────────────────────────────────────────────────────────────────── */

@@ -153,7 +153,7 @@ is the last complete month before the data was received: snapshot 1 = {FIRST_PER
 
 {_md_table(neg_rows)}
 
-## 3 · Extreme load-latency spikes (up to 55 s)
+## 3 · Extreme load-latency spikes (up to {lat["max"]:.0f} s)
 
 * Observed range **{lat["min"]} s to {lat["max"]} s** (median {lat["median"]:.1f} s, p95 {lat["p95"]:.1f} s).
   **{int(at_max)} rows sit exactly at the {lat["max"]} s maximum.**

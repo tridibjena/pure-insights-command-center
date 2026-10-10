@@ -12,6 +12,10 @@ function median(values) {
 export function createTelemetryReplayer({ pool, ingest, exclusive = (fn) => fn(), hub, config, logger }) {
   let observations = null;
   let timer = null;
+  // True while a batch is being ingested. start() during an in-flight batch must not schedule a
+  // second tick that reads the same cursor (the batch would be sent twice); the running tick
+  // reschedules itself when it finishes instead.
+  let inFlight = false;
   // Bumped by reset(): a batch already in flight when the replay is reset must not move the cursor.
   let generation = 0;
   const state = {
@@ -56,7 +60,17 @@ export function createTelemetryReplayer({ pool, ingest, exclusive = (fn) => fn()
 
   async function tick() {
     timer = null;
-    if (!state.running) return;
+    if (!state.running || inFlight) return;
+    inFlight = true;
+    try {
+      await runBatch();
+    } finally {
+      inFlight = false;
+    }
+    schedule();
+  }
+
+  async function runBatch() {
     const gen = generation;
     const rows = await load();
     const batchSize = Math.ceil(perSnapshot() / BATCHES_PER_SNAPSHOT);
@@ -106,11 +120,10 @@ export function createTelemetryReplayer({ pool, ingest, exclusive = (fn) => fn()
       else state.running = false;
     }
     publishStatus();
-    schedule();
   }
 
   function schedule() {
-    if (state.running && !timer) timer = setTimeout(tick, state.intervalMs / BATCHES_PER_SNAPSHOT);
+    if (state.running && !timer && !inFlight) timer = setTimeout(tick, state.intervalMs / BATCHES_PER_SNAPSHOT);
   }
 
   return {

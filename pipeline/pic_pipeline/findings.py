@@ -29,10 +29,16 @@ def build(test: bool = False) -> str:
                    AVG(CASE WHEN avg_load_time_sec > {t.latency_critical_above_sec} THEN 1.0 ELSE 0 END) AS critical_rate
             FROM app.report_observations""")
         latest = one("""
-            SELECT SUM(CASE WHEN is_latency_breach THEN 1 ELSE 0 END) AS breaching,
+            SELECT COUNT(*) AS reports,
+                   SUM(CASE WHEN is_latency_breach THEN 1 ELSE 0 END) AS breaching,
                    SUM(CASE WHEN is_refresh_failure THEN 1 ELSE 0 END) AS failing,
                    SUM(CASE WHEN is_orphaned THEN 1 ELSE 0 END) AS orphaned
             FROM app.report_observations WHERE snapshot_seq = (SELECT MAX(snapshot_seq) FROM app.report_observations)""")
+        shape = one("""
+            SELECT MIN(avg_load_time_sec) AS lat_min, MAX(avg_load_time_sec) AS lat_max,
+                   MAX(snapshot_seq) AS snapshots,
+                   SUM(CASE WHEN is_status_unknown THEN 1 ELSE 0 END) AS unknown
+            FROM app.report_observations""")
         slow_fail = one("""
             SELECT AVG(CASE WHEN is_refresh_failure THEN avg_load_time_sec END) AS lat_fail,
                    AVG(CASE WHEN NOT is_refresh_failure THEN avg_load_time_sec END) AS lat_ok
@@ -93,7 +99,7 @@ def build(test: bool = False) -> str:
 
 1. **The latency SLO is broken platform-wide, not by a few outliers.** {ops.breach_rate:.1%} of report-months load slower
    than {t.latency_alert_sec:g} s; the median load is {ops.p50:.1f} s and p95 is {ops.p95:.1f} s. In the latest snapshot
-   {int(latest.breaching)} of 100 reports breach. Latency is spread almost evenly from 0.6 s to the 55 s ceiling, so fixing the
+   {int(latest.breaching)} of {int(latest.reports)} reports breach. Latency is spread almost evenly from {shape.lat_min:.1f} s to the {shape.lat_max:.0f} s ceiling, so fixing the
    slowest handful of dashboards will not restore the SLO.
 2. **More than a quarter of automated refreshes fail.** Refresh failure rate is {ops.failure_rate:.1%}
    ({int(ops.failed)} FAILED, {int(ops.timed_out)} TIMED_OUT); {int(latest.failing)} reports are failing in the latest
@@ -177,13 +183,13 @@ suite proves it by running the same SQL with idle and untagged usage switched on
    paying for failed runs.
 3. **Close the ownership gap.** Assign an accountable owner to the {int(orphan.reports_currently_orphaned)} currently orphaned reports
    (the dashboard supports audited reassignment) and require an owner at publish time. Ownership in the source changes
-   every month with no memory (reports average {churn.owners:.1f} different owners across 20 periods), which makes
+   every month with no memory (reports average {churn.owners:.1f} different owners across {int(shape.snapshots)} periods), which makes
    chargeback meaningless until ownership is mastered in one place.
 4. **Rightsize or retire.** Hosting spend that does not move with usage indicates fixed, over-provisioned capacity. Re-run
    the decommission ranking on production data (where report identity carries signal) and archive zero-view reports.
 5. **Harden cost telemetry.** Enforce `QUERY_TAG` on every portal query so untagged work and idle time become measurable,
    alert on negative or missing credit records at ingestion, fix the usage counters that report more concurrent users than
-   views, and restore the refresh status feed (100 UNKNOWN outcomes).
+   views, and restore the refresh status feed ({int(shape.unknown)} UNKNOWN outcomes).
 
 ## Forensic checks behind these findings
 

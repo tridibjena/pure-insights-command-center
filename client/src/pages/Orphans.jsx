@@ -9,7 +9,7 @@ import { useApi } from '../hooks/useApi.js';
 import { useStreamEvent } from '../realtime/AlertStream.jsx';
 import { useRouteLoaded } from '../rum.js';
 
-function AssignOwner({ report, onClose, onDone }) {
+function AssignOwner({ report, snapshots, onClose, onDone }) {
   const { data } = useApi('/api/orphans/owners');
   const [ownerEmail, setOwnerEmail] = useState(report.last_known_owner ?? '');
   const [note, setNote] = useState('');
@@ -40,7 +40,7 @@ function AssignOwner({ report, onClose, onDone }) {
       }
     >
       <p className="muted" style={{ margin: 0, lineHeight: 1.5 }}>
-        {report.report_name} has had no owner in {report.orphaned_months} of 20 snapshots and carries{' '}
+        {report.report_name} has had no owner in {report.orphaned_months} of {snapshots} snapshots and carries{' '}
         <strong style={{ color: 'var(--text)' }}>{fmtUsd(report.orphaned_total_cost_usd, 0)}</strong> of unaccountable spend.
         The assignment is applied on top of the source data and written to the audit log.
       </p>
@@ -100,7 +100,7 @@ export function Orphans() {
                   <td><Link to={`/reports/${r.report_id}`} className="mono">{r.report_id}</Link><span className="sub-text">{r.report_name}</span></td>
                   <td className="mono" style={{ fontSize: 12 }}>{r.latest_owner_marker}</td>
                   <td className="mono" style={{ fontSize: 12 }}>{r.last_known_owner ?? '—'}</td>
-                  <td className="num r">{r.orphaned_months} / 20</td>
+                  <td className="num r">{r.orphaned_months} / {s.snapshots}</td>
                   <td className="num r">{fmtUsd(r.orphaned_total_cost_usd, 0)}</td>
                   <td className="num r"><span className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>{fmtSec(r.avg_load_time_sec)}<SeverityBadge severity={r.latency_band} /></span></td>
                   <td><RefreshStatus status={r.refresh_status} /></td>
@@ -131,6 +131,7 @@ export function Orphans() {
       {assigning && (
         <AssignOwner
           report={assigning}
+          snapshots={s.snapshots}
           onClose={() => setAssigning(null)}
           onDone={() => {
             setAssigning(null);

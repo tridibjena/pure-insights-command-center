@@ -312,7 +312,7 @@ Inbound client messages are ignored (`maxPayload` 16 KiB).
 | Limit | Value |
 |---|---|
 | Login failures | `LOGIN_RATE_LIMIT` per IP per 15 min (default 10) |
-| RUM beacons | 60 per minute per IP |
+| RUM beacons | 20 per minute per signed-in user; `route` must be one of the app's route templates; `loadTimeSec` ≤ 600 |
 | Telemetry batch | 1–500 events per request |
 | JSON body | 256 KiB |
 | WebSocket inbound frame | 16 KiB |

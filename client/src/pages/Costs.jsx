@@ -69,7 +69,7 @@ function UnitCostRanking({ reports, className }) {
       className={className}
       title="Fully loaded cost per active view · top 15 reports"
       sub="(Snowflake credits × price + AWS hosting) ÷ monthly active views, lifetime · ★ = decommission candidate"
-      actions={<Segmented label="View" value={view} onChange={setView} options={[{ value: 'chart', label: 'Chart' }, { value: 'table', label: 'Table · all 100' }]} />}
+      actions={<Segmented label="View" value={view} onChange={setView} options={[{ value: 'chart', label: 'Chart' }, { value: 'table', label: `Table · all ${reports.length}` }]} />}
     >
       <ChartOrTable
         view={view}

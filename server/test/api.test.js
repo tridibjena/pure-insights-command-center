@@ -91,6 +91,12 @@ describe('role-based access control', () => {
     assert.ok(Math.abs(enterprise.snowflake_cost_per_view_usd - body.portfolio.snowflake_cost_per_view_usd) < 1e-9);
   });
 
+  test('report search treats % and _ literally', async () => {
+    assert.equal((await as.admin('GET', '/api/reports?search=%25&pageSize=100')).body.total, 0);
+    assert.equal((await as.admin('GET', '/api/reports?search=RPT_2&pageSize=100')).body.total, 100);
+    assert.equal((await as.admin('GET', '/api/reports?search=RPT%5F%5F&pageSize=100')).body.total, 0);
+  });
+
   test('report filters', async () => {
     const orphaned = await as.admin('GET', '/api/reports?orphaned=true&pageSize=100');
     assert.equal(orphaned.body.total, 14);
@@ -200,6 +206,21 @@ describe('real-time alerting over WebSocket', () => {
     sock.close();
   });
 
+  test('alert stats are row-scoped for report owners (including last-hour counts)', async () => {
+    const mine = (await as.owner('GET', '/api/reports?pageSize=1')).body.reports[0].report_id;
+    const owned = new Set((await as.owner('GET', '/api/reports?pageSize=100')).body.reports.map((r) => r.report_id));
+    const other = ['RPT_299', 'RPT_298', 'RPT_297'].find((id) => !owned.has(id));
+    await postTelemetry(ctx, [
+      { type: 'report.telemetry', reportId: mine, avgLoadTimeSec: 50 },
+      { type: 'report.telemetry', reportId: other, avgLoadTimeSec: 50 },
+    ]);
+    const adminStats = (await as.admin('GET', '/api/alerts/stats')).body;
+    const ownerStats = (await as.owner('GET', '/api/alerts/stats')).body;
+    assert.equal(adminStats.lastHour.raised, 2);
+    assert.equal(ownerStats.lastHour.raised, 1, 'owner must not see last-hour activity on other reports');
+    assert.equal(ownerStats.breakdown.reduce((n, r) => n + r.n, 0), 1);
+  });
+
   test('acknowledge workflow and permissions', async () => {
     const { body } = await postTelemetry(ctx, [{ type: 'report.telemetry', reportId: 'RPT_210', avgLoadTimeSec: 33 }]);
     const id = body.transitions[0].alertId;
@@ -218,6 +239,12 @@ describe('real-time alerting over WebSocket', () => {
     assert.equal((await postTelemetry(ctx, [{ type: 'report.telemetry', reportId: 'RPT_200', avgLoadTimeSec: 20 }], 'wrong-key-000000')).status, 401);
     assert.equal((await postTelemetry(ctx, [{ type: 'report.telemetry', reportId: 'RPT_200' }])).status, 400);
     assert.equal((await postTelemetry(ctx, [{ type: 'nope' }])).status, 400);
+  });
+
+  test('RUM beacons only accept the app\'s own routes and sane load times', async () => {
+    assert.equal((await as.owner('POST', '/api/telemetry/rum', { route: '/made-up-page', loadTimeSec: 40 })).status, 400);
+    assert.equal((await as.owner('POST', '/api/telemetry/rum', { route: '/reports', loadTimeSec: 99999 })).status, 400);
+    assert.equal((await as.owner('POST', '/api/telemetry/rum', { route: '/reports/:id', loadTimeSec: 1.2 })).status, 202);
   });
 
   test('browser RUM beacon above 15 s raises RUM_SLOW_LOAD', async () => {

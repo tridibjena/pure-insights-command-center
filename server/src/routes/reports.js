@@ -38,7 +38,8 @@ export function reportsRouter({ pool }) {
       where.push(sql.replaceAll('?', `$${params.length}`));
     };
     if (req.user.ownerScoped) add('r.owner_email = ?', req.user.owner_email);
-    if (q.search) add('(r.report_id ILIKE ? OR r.report_name ILIKE ?)', `%${q.search}%`);
+    // Escape LIKE metacharacters so % and _ typed by the user match literally.
+    if (q.search) add("(r.report_id ILIKE ? ESCAPE '\\' OR r.report_name ILIKE ? ESCAPE '\\')", `%${q.search.replace(/[\\%_]/g, '\\$&')}%`);
     if (q.status) add('o.refresh_status = ?', q.status);
     if (q.band) add('o.latency_band = ?', q.band);
     if (q.orphaned) add('r.is_orphaned = ?', q.orphaned === 'true');
@@ -48,7 +49,7 @@ export function reportsRouter({ pool }) {
       `SELECT r.report_id, r.report_name, r.owner_email, r.is_orphaned, r.has_owner_override,
               o.snapshot_seq, o.period_month, o.refresh_status, o.avg_load_time_sec, o.latency_band,
               o.monthly_active_views, o.concurrent_user_peak, o.aws_hosting_cost_usd, o.credits_clean,
-              s.breach_snapshots, s.failure_snapshots, s.orphaned_snapshots, s.p50_latency_sec,
+              s.breach_snapshots, s.failure_snapshots, s.orphaned_snapshots, s.snapshots, s.p50_latency_sec,
               COALESCE(a.live_alerts, 0) AS live_alerts, a.max_live_severity,
               count(*) OVER () AS total_count
          FROM app.v_report_current r
@@ -57,6 +58,7 @@ export function reportsRouter({ pool }) {
                       count(*) FILTER (WHERE is_latency_breach)::int  AS breach_snapshots,
                       count(*) FILTER (WHERE is_refresh_failure)::int AS failure_snapshots,
                       count(*) FILTER (WHERE is_orphaned)::int        AS orphaned_snapshots,
+                      count(*)::int                                   AS snapshots,
                       percentile_cont(0.5) WITHIN GROUP (ORDER BY avg_load_time_sec) AS p50_latency_sec
                  FROM app.report_observations GROUP BY report_id) s ON s.report_id = r.report_id
          LEFT JOIN (SELECT report_id, count(*)::int AS live_alerts, ${SEVERITY_NAME} AS max_live_severity

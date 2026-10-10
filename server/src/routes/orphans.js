@@ -31,6 +31,7 @@ export function orphansRouter({ pool, hub }) {
       ),
       pool.query(
         `SELECT s.*, (SELECT count(*) FROM app.v_report_current WHERE is_orphaned) AS orphaned_now,
+                (SELECT max(snapshot_seq) FROM app.report_observations) AS snapshots,
                 (SELECT count(*) FROM app.report_observations WHERE is_orphaned) AS orphaned_rows,
                 (SELECT count(*) FILTER (WHERE owner_raw = 'nan') FROM app.report_observations) AS nan_marker_rows,
                 (SELECT count(*) FILTER (WHERE owner_raw = 'ORPHANED_REPORT') FROM app.report_observations) AS orphaned_marker_rows

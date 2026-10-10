@@ -54,7 +54,7 @@ The 2,000 CSV observations stream through the live ingest → alert → WebSocke
 | `npm run pipeline` | migrate → ingest → clean → forensic checks → simulate ACCOUNT_USAGE → cost SQL suite → verify → export → Snowflake-dialect check (emulator) → DQ report → findings |
 | `npm run dev` | API (`node --watch`) and Vite dev server |
 | `npm start` | Production build: Express serves the built React app on :4000 |
-| `npm test` | pytest (52) + server `node:test` (34) + client Vitest (14) |
+| `npm test` | pytest (52) + server `node:test` (39) + client Vitest (16) |
 | `npm run verify` | Rebuilds the `cost.*` views from `sql/snowflake/01–09` and asserts all reconciliation checks pass |
 | `npm run verify:snowflake` | Parses the suite as Snowflake SQL and executes it on the Snowflake emulator; checks must match PostgreSQL |
 | `npm run lint` | ruff + eslint (server and client) |

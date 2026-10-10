@@ -5,7 +5,8 @@ import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { api } from './api/client.js';
 
-let routeStartedAt = performance.now();
+// performance.now() is measured from navigation start, so the first page's clock starts at 0.
+let routeStartedAt = 0;
 let firstRoute = true;
 
 export function useRouteTimer() {

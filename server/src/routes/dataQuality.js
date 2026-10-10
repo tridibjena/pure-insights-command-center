@@ -19,6 +19,7 @@ export function dataQualityRouter({ pool, config }) {
               (SELECT count(*) FROM app.report_observations WHERE avg_load_time_sec = $1) AS rows_exactly_at_threshold,
               (SELECT sum(credits_raw) FROM app.report_observations)                   AS credits_raw_total,
               (SELECT sum(credits_clean) FROM app.report_observations)                 AS credits_clean_total,
+              (SELECT count(*) FROM app.report_observations WHERE is_negative_credits) AS negative_credit_rows,
               (SELECT min(source_file) FROM raw.report_monitoring_csv)                 AS source_file`,
       [config.thresholds.latencyAlertSec],
     );

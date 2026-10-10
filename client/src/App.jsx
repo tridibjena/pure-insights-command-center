@@ -8,7 +8,7 @@ import { Admin } from './pages/Admin.jsx';
 import { Alerts } from './pages/Alerts.jsx';
 import { Costs } from './pages/Costs.jsx';
 import { DataQuality } from './pages/DataQuality.jsx';
-import { NotFound } from './pages/Forbidden.jsx';
+import { NoAccess, NotFound } from './pages/Forbidden.jsx';
 import { Health } from './pages/Health.jsx';
 import { Login } from './pages/Login.jsx';
 import { Orphans } from './pages/Orphans.jsx';
@@ -42,6 +42,7 @@ export function App() {
         <Route path="/costs" element={guarded('costs:read', <Costs />)} />
         <Route path="/data-quality" element={guarded('dq:read', <DataQuality />)} />
         <Route path="/admin" element={guarded('users:read', <Admin />)} />
+        <Route path="/forbidden" element={<NoAccess />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

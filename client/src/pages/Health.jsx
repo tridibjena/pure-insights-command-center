@@ -75,7 +75,7 @@ function LatencyDistribution({ threshold }) {
   );
 }
 
-function ReliabilityTrend() {
+function ReliabilityTrend({ reports }) {
   const [view, setView] = useState('chart');
   const { data } = useApi('/api/dashboard/trend');
   const rows = data?.snapshots ?? [];
@@ -83,7 +83,7 @@ function ReliabilityTrend() {
   return (
     <Panel
       title="SLO breach and refresh failure by snapshot"
-      sub="Share of the 100 reports in each monthly snapshot"
+      sub={`Share of the ${reports} reports in each monthly snapshot`}
       actions={<Segmented label="View" value={view} onChange={setView} options={[{ value: 'chart', label: 'Chart' }, { value: 'table', label: 'Table' }]} />}
     >
       <div className="legend" style={{ marginBottom: 10 }}>
@@ -204,7 +204,7 @@ export function Health() {
 
       <div className="grid grid-2">
         <LatencyDistribution threshold={s.thresholds.latencyAlertSec} />
-        <ReliabilityTrend />
+        <ReliabilityTrend reports={L.reports} />
       </div>
 
       <div className="grid grid-12">
