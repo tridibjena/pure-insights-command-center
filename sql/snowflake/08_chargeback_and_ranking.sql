@@ -1,6 +1,6 @@
-/* =============================================================================
+/*
    08 · Chargeback, ranking and trend
-   ============================================================================= */
+*/
 
 -- Monthly chargeback by the owner recorded for that period; orphaned spend is explicit.
 CREATE OR REPLACE VIEW cost.v_chargeback_owner_month AS

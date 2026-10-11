@@ -1,6 +1,5 @@
-/* =============================================================================
+/*
    00 · Bootstrap the simulated ACCOUNT_USAGE logs in a real Snowflake account
-   -----------------------------------------------------------------------------
    SNOWFLAKE-ONLY script (PostgreSQL loads the same data via the Python pipeline).
 
    Prerequisite: `npm run pipeline` (or `python -m pic_pipeline.cli export`) writes
@@ -9,7 +8,7 @@
    Scripts 01-09 reference unqualified schemas ACCOUNT_USAGE, PORTAL and COST, so
    they run unchanged inside PURE_INSIGHTS_SIM. To run against your *live* account
    instead, replace step 3 with views over SNOWFLAKE.ACCOUNT_USAGE (see README).
-   ============================================================================= */
+*/
 
 USE ROLE SYSADMIN;
 CREATE DATABASE IF NOT EXISTS PURE_INSIGHTS_SIM;
@@ -19,7 +18,7 @@ CREATE SCHEMA IF NOT EXISTS PORTAL;
 CREATE SCHEMA IF NOT EXISTS COST;
 ALTER SESSION SET TIMEZONE = 'UTC';
 
--- 1 · File format + stage ------------------------------------------------------
+-- 1 · File format + stage
 CREATE OR REPLACE FILE FORMAT PORTAL.PIC_CSV
   TYPE = CSV SKIP_HEADER = 1 FIELD_OPTIONALLY_ENCLOSED_BY = '"'
   NULL_IF = ('') EMPTY_FIELD_AS_NULL = TRUE;
@@ -28,7 +27,7 @@ CREATE OR REPLACE STAGE PORTAL.PIC_STAGE FILE_FORMAT = PORTAL.PIC_CSV;
 -- From SnowSQL, in the repository root:
 --   PUT file://data/simulated/*.csv @PURE_INSIGHTS_SIM.PORTAL.PIC_STAGE AUTO_COMPRESS=TRUE;
 
--- 2 · Tables (Snowflake column names; subset of the documented views) ------------
+-- 2 · Tables (Snowflake column names; subset of the documented views)
 CREATE OR REPLACE TABLE ACCOUNT_USAGE.QUERY_HISTORY (
   QUERY_ID VARCHAR, QUERY_TEXT VARCHAR, DATABASE_NAME VARCHAR, SCHEMA_NAME VARCHAR,
   QUERY_TYPE VARCHAR, SESSION_ID NUMBER, USER_NAME VARCHAR, ROLE_NAME VARCHAR,
@@ -58,7 +57,7 @@ CREATE OR REPLACE TABLE PORTAL.REPORT_USAGE_MONTHLY (
 CREATE OR REPLACE TABLE PORTAL.CREDIT_PRICING (
   PRICING_ID NUMBER, CURRENCY VARCHAR, CREDIT_PRICE_USD NUMBER(10,4));
 
--- 3 · Load ------------------------------------------------------------------------
+-- 3 · Load
 COPY INTO ACCOUNT_USAGE.QUERY_HISTORY              FROM @PORTAL.PIC_STAGE/query_history.csv.gz;
 COPY INTO ACCOUNT_USAGE.QUERY_ATTRIBUTION_HISTORY  FROM @PORTAL.PIC_STAGE/query_attribution_history.csv.gz;
 COPY INTO ACCOUNT_USAGE.WAREHOUSE_METERING_HISTORY FROM @PORTAL.PIC_STAGE/warehouse_metering_history.csv.gz;

@@ -1,11 +1,10 @@
-/* =============================================================================
+/*
    03 · METHOD A — per-query attribution via QUERY_TAG (primary method)
-   -----------------------------------------------------------------------------
    Snowflake's QUERY_ATTRIBUTION_HISTORY assigns warehouse compute credits to
    each query (concurrency-aware, excludes idle time). The portal stamps every
    dashboard query with QUERY_TAG = 'pure-insights:report=<REPORT_ID>', so
    summing VALID rows by tag attributes credits to individual reports.
-   ============================================================================= */
+*/
 
 CREATE OR REPLACE VIEW cost.v_report_month_credits_method_a AS
 SELECT report_id,

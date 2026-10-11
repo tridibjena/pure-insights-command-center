@@ -1,10 +1,9 @@
-/* =============================================================================
+/*
    06 · Orphaned cost exposure — spend with no accountable owner
-   -----------------------------------------------------------------------------
    A report-month is orphaned when the portal recorded no valid owner e-mail
    (source markers 'nan' / 'ORPHANED_REPORT' are cleaned to NULL upstream).
    "Currently orphaned" = orphaned in the report's latest period.
-   ============================================================================= */
+*/
 
 CREATE OR REPLACE VIEW cost.v_orphaned_cost_exposure AS
 WITH latest AS (

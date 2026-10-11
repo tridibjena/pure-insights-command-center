@@ -1,10 +1,9 @@
-/* =============================================================================
+/*
    02 · Anomaly quarantine — classify every attributed credit before it is used
-   -----------------------------------------------------------------------------
    Credits cannot be negative. The injected negative values are QUARANTINED
    (excluded from attribution, kept for audit) — never abs()'d or zeroed.
    Untagged queries and tags pointing at unknown reports are separated too.
-   ============================================================================= */
+*/
 
 CREATE OR REPLACE VIEW cost.v_query_attribution_classified AS
 WITH known_reports AS (

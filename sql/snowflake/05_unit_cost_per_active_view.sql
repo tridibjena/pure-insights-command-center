@@ -1,6 +1,5 @@
-/* =============================================================================
+/*
    05 · Unit cost per active user view
-   -----------------------------------------------------------------------------
    snowflake_cost_per_view = Method-A credits x contracted $/credit
                              / monthly_active_views
    fully_loaded_cost_per_view adds the report's AWS hosting cost.
@@ -11,7 +10,7 @@
    * credits quarantined (negative in source) → NULL, status CREDITS_QUARANTINED;
      lifetime unit costs exclude those months from BOTH numerator and denominator
      so the ratio is not understated.
-   ============================================================================= */
+*/
 
 CREATE OR REPLACE VIEW cost.v_unit_cost_report_month AS
 SELECT u.report_id,

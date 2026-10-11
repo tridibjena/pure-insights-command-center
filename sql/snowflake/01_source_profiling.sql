@@ -1,7 +1,7 @@
-/* =============================================================================
+/*
    01 · Source profiling — what do the ACCOUNT_USAGE logs cover?
    Portable: runs unchanged on Snowflake and PostgreSQL.
-   ============================================================================= */
+*/
 
 SELECT 'QUERY_HISTORY'               AS source_view,
        COUNT(*)                      AS row_count,

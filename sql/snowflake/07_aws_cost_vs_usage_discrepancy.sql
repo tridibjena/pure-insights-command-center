@@ -1,12 +1,11 @@
-/* =============================================================================
+/*
    07 · AWS hosting cost vs active usage — discrepancy detection
-   -----------------------------------------------------------------------------
    Hosting cost should scale with usage. Three rules flag where it does not:
      ZERO_VIEW_COST      cost incurred while monthly_active_views = 0
      PEAK_EXCEEDS_VIEWS  concurrent_user_peak > monthly_active_views (impossible)
      COST_PER_VIEW_OUTLIER  aws cost / view > Q3 + 3 x IQR (robust fence)
    plus Pearson and Spearman (tie-aware rank) correlation of views vs cost.
-   ============================================================================= */
+*/
 
 CREATE OR REPLACE VIEW cost.v_aws_cost_per_view_fence AS
 SELECT PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY aws_hosting_cost_usd / monthly_active_views) AS q1,

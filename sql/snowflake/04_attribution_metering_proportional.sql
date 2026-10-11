@@ -1,6 +1,5 @@
-/* =============================================================================
+/*
    04 · METHOD B — proportional allocation of the warehouse bill (cross-check)
-   -----------------------------------------------------------------------------
    The classic approach used before QUERY_ATTRIBUTION_HISTORY existed: take each
    warehouse-hour's metered compute credits (the bill, INCLUDING idle time) and
    split it across the queries that ran in that hour by execution-time share.
@@ -9,7 +8,7 @@
 
    Method B fully allocates the bill; Method A is more precise per query. The
    reconciliation in 09 proves: SUM(B) + unallocated = SUM(metering).
-   ============================================================================= */
+*/
 
 CREATE OR REPLACE VIEW cost.v_query_hour_share AS
 WITH q AS (

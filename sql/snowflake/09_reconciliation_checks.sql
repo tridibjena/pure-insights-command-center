@@ -1,6 +1,5 @@
-/* =============================================================================
+/*
    09 · Reconciliation checks — every row must report status = 'PASS'
-   -----------------------------------------------------------------------------
    Proves the attribution neither loses nor invents credits:
      1  Method A (valid) = credits the source reported as >= 0
      2  Quarantined negatives = credits the source reported as < 0
@@ -8,7 +7,7 @@
      4  Method B + unallocated idle = total metered compute (bill fully allocated)
      5  Metering's query-attributed credits = all non-negative attributions
      6  No unit cost computed for a zero-view month
-   ============================================================================= */
+*/
 
 CREATE OR REPLACE VIEW cost.v_reconciliation_checks AS
 WITH
