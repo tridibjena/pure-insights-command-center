@@ -34,6 +34,17 @@ admin visibility. The Command Center restores it:
 | **Cloud Cost SQL Attribution** | [`sql/snowflake/00–09`](sql/snowflake/README.md) · [COST_ALLOCATION_METHODOLOGY.md](docs/COST_ALLOCATION_METHODOLOGY.md) · `npm run verify` (reconciliation on PostgreSQL) · `npm run verify:snowflake` (Snowflake dialect, on an emulator) |
 | **Code Quality & System Docs** | [CI](.github/workflows/ci.yml) (lint, all tests, reconciliation, Snowflake check and build, on two Node/Python versions) · tests in [`pipeline/tests`](pipeline/tests), [`server/test`](server/test), [`client/src/test`](client/src/test) · [`openapi.contract.test.js`](server/test/openapi.contract.test.js) (routes match the spec) · [`docs/`](docs) |
 
+**Changes since submission.** The submitted version is tagged
+[`submission-2026-10-11`](https://github.com/tridibjena/pure-insights-command-center/tree/submission-2026-10-11).
+Changes made on 2026-10-13 leave every result unchanged: the same 107 tests pass and every figure is identical.
+
+* Setup also works without Docker, against any reachable PostgreSQL server, and creates both databases ([Without Docker](#without-docker)).
+* CI on GitHub Actions runs lint, all tests, the reconciliation checks, the Snowflake dialect check and the production build, on Node 20 with Python 3.11 and on Node 24 with Python 3.14.
+* The server tests now run on Node 20 (their glob pattern needed Node 21+). The stated minimum is now Node 20.19, which Vite and ESLint require.
+* Python dependencies are bounded to the tested versions.
+* Doc corrections: PostgreSQL was this project's choice, not a requirement of the brief; a full replay produces 433 latency incidents (940 across all rules), not "tens"; and a note explains why $2.434 + $0.307 differs from the fully loaded $2.740 by $0.001.
+* Added: this rubric map, and [scaling and limits](docs/ARCHITECTURE.md#scaling-and-limits) in the architecture doc.
+
 ---
 
 ## Quick start
