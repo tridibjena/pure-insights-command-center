@@ -8,7 +8,8 @@
     "client"
   ],
   "scripts": {
-    "setup": "docker compose up -d --wait && npm run pipeline:install && npm run pipeline && npm run seed",
+    "setup": "npm run db:setup && npm run pipeline:install && npm run pipeline && npm run seed",
+    "db:setup": "npm --workspace server run db:setup",
     "pipeline:install": "sh scripts/bootstrap-python.sh",
     "pipeline": "cd pipeline && .venv/bin/python -m pic_pipeline.cli all",
     "seed": "npm --workspace server run seed",

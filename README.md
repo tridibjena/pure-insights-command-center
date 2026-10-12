@@ -27,12 +27,13 @@ admin visibility. The Command Center restores it:
 
 ## Quick start
 
-**Prerequisites:** Docker (Desktop running), Node.js ≥ 20, Python ≥ 3.11.
+**Prerequisites:** Node.js ≥ 20, Python ≥ 3.11, and PostgreSQL 16: either Docker (Desktop running), which setup
+uses to start the bundled container, or an existing server ([without Docker](#without-docker)).
 
 ```bash
 cp .env.example .env          # local defaults; change JWT_SECRET for anything beyond local use
 npm install
-npm run setup                 # Postgres (docker compose) → Python venv → pipeline → demo users
+npm run setup                 # PostgreSQL (existing server, or docker compose) → Python venv → pipeline → demo users
 npm run dev                   # API on :4000, dashboard on http://localhost:5173
 ```
 
@@ -50,7 +51,7 @@ The 2,000 CSV observations stream through the live ingest → alert → WebSocke
 
 | Command | What it does |
 |---|---|
-| `npm run setup` | Starts Postgres, creates the Python venv, runs the full pipeline, seeds users (idempotent; safe to re-run) |
+| `npm run setup` | Uses the PostgreSQL server in `.env` (starting the Docker container if none is reachable), creates both databases, creates the Python venv, runs the full pipeline, seeds users (idempotent; safe to re-run) |
 | `npm run pipeline` | migrate → ingest → clean → forensic checks → simulate ACCOUNT_USAGE → cost SQL suite → verify → export → Snowflake-dialect check (emulator) → DQ report → findings |
 | `npm run dev` | API (`node --watch`) and Vite dev server |
 | `npm start` | Production build: Express serves the built React app on :4000 |
@@ -59,6 +60,16 @@ The 2,000 CSV observations stream through the live ingest → alert → WebSocke
 | `npm run verify:snowflake` | Parses the suite as Snowflake SQL and executes it on the Snowflake emulator; checks must match PostgreSQL |
 | `npm run lint` | ruff + eslint (server and client) |
 | `npm run screenshots` | Re-captures the README screenshots from the running app (Playwright; first run `pipeline/.venv/bin/playwright install chromium`) |
+
+### Without Docker
+
+Docker is only one way to get PostgreSQL. To use a server you already have (a local install, a managed instance):
+
+1. Point `PGHOST`, `PGPORT`, `PGUSER` and `PGPASSWORD` in `.env` at it.
+2. Run `npm run setup` as above. It finds the server, skips Docker, and creates `pure_insights` and
+   `pure_insights_test` if they don't exist. If the user lacks `CREATEDB`, create both first with `createdb`.
+
+`npm run db:setup` runs just this step.
 
 ---
 
