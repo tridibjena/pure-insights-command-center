@@ -10,7 +10,7 @@
     "start": "NODE_ENV=production node src/index.js",
     "seed": "node scripts/seedUsers.js",
     "db:setup": "node scripts/setupDatabase.js",
-    "test": "node --test --test-concurrency=1 \"test/**/*.test.js\"",
+    "test": "node --test --test-concurrency=1 test/*.test.js",
     "lint": "eslint ."
   },
   "dependencies": {
