@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 import psycopg
 import pytest
@@ -44,6 +46,8 @@ def loaded_test_db():
         with connect(test=True):
             pass
     except psycopg.OperationalError as exc:  # pragma: no cover
+        if os.getenv("CI"):  # in CI a missing database must fail the run, not skip tests silently
+            raise
         pytest.skip(f"test database unavailable: {exc}")
     migrate.run(test=True)
     ingest_csv.run(test=True)

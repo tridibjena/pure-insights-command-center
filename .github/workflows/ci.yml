@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Node ${{ matrix.node }} · Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - node: 20 # the documented minimums
+            python: '3.11'
+          - node: 24
+            python: '3.14'
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: pic
+          POSTGRES_PASSWORD: pic_dev_password
+          POSTGRES_DB: pure_insights
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U pic -d pure_insights"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - id: python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+      - name: Use the example environment
+        run: cp .env.example .env
+      - name: Install Node dependencies
+        run: npm ci
+      - name: Set up databases, pipeline and demo users
+        run: npm run setup
+        env:
+          PYTHON: ${{ steps.python.outputs.python-path }}
+      - name: Lint (ruff, eslint)
+        run: npm run lint
+      - name: Tests (pytest, node:test, Vitest)
+        run: npm test
+      - name: Reconciliation checks (PostgreSQL)
+        run: npm run verify
+      - name: Snowflake dialect check (emulator)
+        run: npm run verify:snowflake
+      - name: Production build
+        run: npm run build

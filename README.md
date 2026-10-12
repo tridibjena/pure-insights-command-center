@@ -1,5 +1,7 @@
 # Pure Insights Command Center
 
+[![CI](https://github.com/tridibjena/pure-insights-command-center/actions/workflows/ci.yml/badge.svg)](https://github.com/tridibjena/pure-insights-command-center/actions/workflows/ci.yml)
+
 **Platform operational analytics for the custom analytics portal** — Case Study 3.
 
 After the move from Tableau Server to a custom React / Node.js / Snowflake / AWS portal, the business lost native
@@ -27,7 +29,7 @@ admin visibility. The Command Center restores it:
 
 ## Quick start
 
-**Prerequisites:** Node.js ≥ 20, Python ≥ 3.11, and PostgreSQL 16: either Docker (Desktop running), which setup
+**Prerequisites:** Node.js ≥ 20.19, Python ≥ 3.11, and PostgreSQL 16: either Docker (Desktop running), which setup
 uses to start the bundled container, or an existing server ([without Docker](#without-docker)).
 
 ```bash

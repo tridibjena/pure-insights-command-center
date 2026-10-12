@@ -1,9 +1,10 @@
 #!/bin/sh
 # Create the pipeline virtualenv (Python >= 3.11) and install its requirements.
+# PYTHON overrides the interpreter choice (CI uses it to test a specific version).
 set -e
 cd "$(dirname "$0")/../pipeline"
 if [ ! -x .venv/bin/python ]; then
-  PY=$(command -v python3.14 || command -v python3.13 || command -v python3.12 || command -v python3.11 || command -v python3)
+  PY=${PYTHON:-$(command -v python3.14 || command -v python3.13 || command -v python3.12 || command -v python3.11 || command -v python3)}
   "$PY" -c 'import sys; assert sys.version_info >= (3, 11), "Python 3.11+ required"'
   "$PY" -m venv .venv
 fi
