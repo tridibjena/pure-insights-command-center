@@ -89,3 +89,27 @@ See [COST_ALLOCATION_METHODOLOGY.md](COST_ALLOCATION_METHODOLOGY.md). The SQL su
 | `pipeline/tests` | pytest | every anomaly count; threshold edges (15.0 / 15.01 / 55.0 / invalid); owner normalisation; fail-fast on bad numerics; simulation reconciles per report-month; determinism; SQL portability guard; full pipeline into the test DB; all reconciliation checks |
 | `server/test` | `node:test` + fetch + `ws` | rule edges; RBAC matrix; 401/403/404 scoping; CSRF; cookie flags; login rate limit; owner reassignment; raise → escalate → de-duplicate → auto-resolve over a real WebSocket; owner-scoped delivery; ack/resolve workflow; API-key ingest; RUM; replay of snapshot 1 (77 alerts); OpenAPI contract |
 | `client/src/test` | Vitest + Testing Library | permission-gated navigation; 403 route for a report owner; login redirect; alert reducer (ordering, stale events, resync merge); backoff; severity never colour-only |
+
+## Scaling and limits
+
+The Command Center runs as **one API process**. That is enough for this dataset: processed back to back, the 2,000
+observations take about 6 s (roughly 300 events/s on a laptop). But some state lives in that process's memory, so a
+second instance behind a load balancer would not behave correctly without the changes below.
+
+| Component | Today | With a second API instance | Path to scale |
+|---|---|---|---|
+| Ingest queue (`telemetryIngest.js`) | In-process promise chain, so events for the same incident never race | Both instances could try to open the same incident; the partial unique index blocks the duplicate, but the second request fails with a constraint error instead of folding into the incident | Take a per-incident advisory lock (`pg_advisory_xact_lock(hashtext(dedupe_key))`) before reading the live alert, so de-duplication holds across processes |
+| WebSocket fan-out (`wsHub.js`) | Connection list in memory | A transition reaches only the clients connected to the instance that processed it | Publish each committed transition with PostgreSQL `LISTEN/NOTIFY` (the alert id only; payloads are capped at 8,000 bytes) and let every instance re-read it and fan out to its own clients |
+| Rate limits (login, RUM) | `express-rate-limit` in-memory store | Each instance counts separately, so the effective limit multiplies | A shared store (Redis or PostgreSQL) |
+| Telemetry replay | State in memory | Each instance could run its own replay | Run it on one instance, chosen with an advisory lock; it is a demo feature |
+| API latency metrics | Ring buffer per process | Each instance reports only its own requests | Export to a metrics backend (Prometheus or OpenTelemetry) |
+
+Other known limits:
+
+* **Sessions** are stateless JWTs. Deactivating an account or changing a role takes effect on the next request,
+  because the user row is re-read every time, but signing out only clears the cookie: a copied token stays valid until
+  it expires (8 h by default). A session table or a token denylist would close this.
+* **Open WebSocket connections** keep the role they connected with. Owner scopes refresh every 60 s and after every
+  reassignment, but a role change or deactivation applies on the next reconnect.
+* **`app.telemetry_events` and `app.alert_events` grow without limit.** Monthly partitions with a retention window
+  would bound them.

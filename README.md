@@ -25,6 +25,15 @@ admin visibility. The Command Center restores it:
 | Business synthesis | [docs/BUSINESS_FINDINGS.md](docs/BUSINESS_FINDINGS.md) (generated from live queries) |
 | Architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 
+**Where each rubric criterion is addressed**
+
+| Criterion | Where to look |
+|---|---|
+| **Full-Stack Web Architecture** | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (layers, request path, scaling and limits) · [`server/src/app.js`](server/src/app.js) (every route mount and its permission guard) · [`server/src/auth/permissions.js`](server/src/auth/permissions.js) (RBAC matrix) · [`db/migrations/`](db/migrations) (raw → app → cost schemas) |
+| **Real-time Alerting & Telemetry** | [`alertRules.js`](server/src/services/alertRules.js) (rules: > 15 s latency, failed refreshes) · [`alertService.js`](server/src/services/alertService.js) (incident lifecycle, de-duplication) · [`telemetryIngest.js`](server/src/services/telemetryIngest.js) (single ingest path) · [`wsHub.js`](server/src/services/wsHub.js) (cookie-authenticated WebSocket, per-user filtering) · [`client/src/realtime/`](client/src/realtime) (reducer, reconnect, resync) · [API_SPEC.md §5–6](docs/API_SPEC.md#5-alerting-rules-task-2) · [asyncapi.yaml](docs/asyncapi.yaml) |
+| **Cloud Cost SQL Attribution** | [`sql/snowflake/00–09`](sql/snowflake/README.md) · [COST_ALLOCATION_METHODOLOGY.md](docs/COST_ALLOCATION_METHODOLOGY.md) · `npm run verify` (reconciliation on PostgreSQL) · `npm run verify:snowflake` (Snowflake dialect, on an emulator) |
+| **Code Quality & System Docs** | [CI](.github/workflows/ci.yml) (lint, all tests, reconciliation, Snowflake check and build, on two Node/Python versions) · tests in [`pipeline/tests`](pipeline/tests), [`server/test`](server/test), [`client/src/test`](client/src/test) · [`openapi.contract.test.js`](server/test/openapi.contract.test.js) (routes match the spec) · [`docs/`](docs) |
+
 ---
 
 ## Quick start
