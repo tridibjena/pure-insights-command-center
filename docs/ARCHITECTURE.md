@@ -2,7 +2,9 @@
 
 ## Stack
 
-**CSV → PostgreSQL → Node.js/Express → React**, as mandated. There is no other database or application framework.
+**CSV → PostgreSQL → Node.js/Express → React.** The brief specifies React and Node.js/Express; PostgreSQL is this
+project's choice of application database, and the cost-allocation SQL suite runs unchanged on Snowflake. There is no
+other database or application framework.
 
 | Layer | Technology | Responsibility |
 |---|---|---|

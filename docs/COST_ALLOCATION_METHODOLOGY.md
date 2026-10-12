@@ -88,6 +88,15 @@ fully_loaded_cost_per_view = (Method-A credits × credit_price + aws_hosting_cos
 | Fully loaded cost / active view | **$2.740** |
 | Per-report fully loaded range | $1.83 – $4.99 (median $2.72) |
 
+> **Why $2.434 + $0.307 is not $2.740.** The gap is only $0.001, a rounding-level difference, but it comes from the
+> denominators rather than from rounding. A unit cost is only meaningful when cost and views cover the same months.
+> The 24 quarantined report-months have no valid Snowflake cost, so counting their views would spread the remaining
+> spend over views it did not pay for and understate the cost per view. The Snowflake and fully loaded figures therefore
+> both use the 1,486,905 views in months with valid credits, and the fully loaded AWS component over those months is
+> $0.306: $2.434 + $0.306 = $2.740 (2.7401 before rounding). The standalone AWS row can use every month, because AWS
+> cost has no quarantined values: $0.307 over all 1,503,281 views. Adding the two standalone rows gives $2.741, which
+> mixes two denominators and is not the cost per view of any set of months.
+
 **Price sensitivity** (`v_unit_cost_price_sensitivity`, on-demand list prices, AWS US East):
 
 | Edition | $/credit | Snowflake $/view | Fully loaded $/view |

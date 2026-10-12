@@ -225,8 +225,10 @@ stateDiagram-v2
 * Every transition is stored in `app.alert_events` (RAISED / REPEATED / ESCALATED / ACKNOWLEDGED / RESOLVED) with
   the actor.
 * Events are processed sequentially by an in-process queue, so concurrent ingests cannot race the de-duplication.
-* Why this matters: 74.5 % of the dataset's report-months exceed 15 s. Without de-duplication the stream would emit
-  about 1,490 notifications instead of tens of incidents.
+* Why this matters: 74.5 % of the dataset's report-months exceed 15 s. A full replay of the 2,000 observations sends
+  1,490 latency breaches; de-duplication folds them into 433 `LATENCY_SLO_BREACH` incidents (−71 %), and 940
+  incidents across all rules. Breaches in this dataset are independent from month to month, so a report often
+  recovers and breaches again, and each recovery resolves its incident.
 
 ### Data flow
 
