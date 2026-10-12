@@ -1,10 +1,12 @@
-pandas>=2.2
-numpy>=2.0
-psycopg[binary]>=3.2
-python-dotenv>=1.0
-pytest>=8.0
-ruff>=0.6
-playwright>=1.45
-sqlglot>=25
-fakesnow>=0.11
-snowflake-connector-python>=3.12
+# Upper bounds stop a future major/minor release from changing results or breaking the suite.
+# Tested on Python 3.11 and 3.14 (CI runs both).
+pandas>=2.2,<3.1
+numpy>=2.0,<2.6
+psycopg[binary]>=3.2,<3.4
+python-dotenv>=1.0,<2
+pytest>=8.0,<10
+ruff>=0.17,<0.18
+playwright>=1.45,<2
+sqlglot>=25,<31
+fakesnow>=0.11.20,<0.12
+snowflake-connector-python>=3.12,<5
