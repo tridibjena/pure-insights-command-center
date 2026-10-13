@@ -34,13 +34,6 @@ admin visibility. The Command Center restores it:
 | **Cloud Cost SQL Attribution** | [`sql/snowflake/00–09`](sql/snowflake/README.md) · [COST_ALLOCATION_METHODOLOGY.md](docs/COST_ALLOCATION_METHODOLOGY.md) · `npm run verify` (reconciliation on PostgreSQL) · `npm run verify:snowflake` (Snowflake dialect, on an emulator) |
 | **Code Quality & System Docs** | [CI](.github/workflows/ci.yml) (lint, all tests, reconciliation, Snowflake check and build, on two Node/Python versions) · tests in [`pipeline/tests`](pipeline/tests), [`server/test`](server/test), [`client/src/test`](client/src/test) · [`openapi.contract.test.js`](server/test/openapi.contract.test.js) (routes match the spec) · [`docs/`](docs) |
 
-* Setup also works without Docker, against any reachable PostgreSQL server, and creates both databases ([Without Docker](#without-docker)).
-* CI on GitHub Actions runs lint, all tests, the reconciliation checks, the Snowflake dialect check and the production build, on Node 20 with Python 3.11 and on Node 24 with Python 3.14.
-* The server tests now run on Node 20 (their glob pattern needed Node 21+). The stated minimum is now Node 20.19, which Vite and ESLint require.
-* Python dependencies are bounded to the tested versions.
-* Doc corrections: PostgreSQL was this project's choice, not a requirement of the brief; a full replay produces 433 latency incidents (940 across all rules), not "tens"; and a note explains why $2.434 + $0.307 differs from the fully loaded $2.740 by $0.001.
-* Added: this rubric map, and [scaling and limits](docs/ARCHITECTURE.md#scaling-and-limits) in the architecture doc.
-
 ---
 
 ## Quick start
@@ -273,7 +266,7 @@ The full write-up, generated from live queries, is in [docs/BUSINESS_FINDINGS.md
 
 ## Assumptions
 
-Each former assumption is now either tested against the data or tied to an external source:
+Each assumption is either tested against the data or tied to an external source:
 
 * **Timeline.** Monthly cadence is *tested* (lag-1 autocorrelation ≈ 0). Only the calendar anchor is a convention: the last complete month before the data was received, Sep 2026. It's configurable via `DATA_AS_OF_MONTH`.
 * **Credit price.** `CREDIT_PRICE_USD = 3.00` is Snowflake's on-demand list price for **Enterprise edition on AWS US East**; Standard is $2 and Business Critical $4. The brief puts the portal on AWS, and Enterprise is the edition that provides the multi-cluster warehouses a portal of this concurrency needs. The SQL suite reports unit cost at all three prices (`cost.v_unit_cost_price_sensitivity`).
