@@ -78,7 +78,7 @@ fully_loaded_cost_per_view = (Method-A credits × credit_price + aws_hosting_cos
 
 * **Zero views:** `NULLIF(monthly_active_views, 0)` makes the unit cost NULL, with status `ZERO_VIEWS` (4 report-months). It is never a divide-by-zero and never silently 0.
 * **Quarantined credits:** the month's Snowflake unit cost is NULL (`CREDITS_QUARANTINED`, 24 report-months). Lifetime and portfolio ratios exclude those months from **both** the numerator and the denominator.
-* **Idle time:** the formulas use Method A, which excludes warehouse idle time. On this dataset idle time is 0, so the figures are complete. On a live account they would understate cost per view by the idle share (`cost.v_warehouse_idle`); allocating each hour's idle time to reports in proportion to their Method A credits would close that.
+* **Idle time:** the formulas use Method A, which excludes warehouse idle time. On this dataset idle time is 0, so the figures are complete. On a real Snowflake account warehouses do sit idle, so the same formulas would leave that cost out and make each view look cheaper than it is. The idle amount is already measured by the existing `cost.v_warehouse_idle` view; allocating each hour's idle time to reports in proportion to their Method A credits would close the gap.
 * Grains: report-month (`v_unit_cost_report_month`), report lifetime (`v_unit_cost_report`), portfolio (`v_unit_cost_portfolio`).
 
 | Portfolio result (at $3/credit) | Value |
