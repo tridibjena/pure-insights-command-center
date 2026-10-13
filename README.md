@@ -2,7 +2,8 @@
 
 [![CI](https://github.com/tridibjena/pure-insights-command-center/actions/workflows/ci.yml/badge.svg)](https://github.com/tridibjena/pure-insights-command-center/actions/workflows/ci.yml)
 
-**Platform operational analytics for the custom analytics portal** — Case Study 3.
+**Platform operational analytics for the custom analytics portal** — Case Study 3. The final version is tagged
+[`v1.0`](https://github.com/tridibjena/pure-insights-command-center/tree/v1.0).
 
 After the move from Tableau Server to a custom React / Node.js / Snowflake / AWS portal, the business lost native
 admin visibility. The Command Center restores it:
